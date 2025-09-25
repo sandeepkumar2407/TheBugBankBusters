@@ -1,4 +1,7 @@
 
+using Bank.Models;
+using Microsoft.EntityFrameworkCore;
+
 namespace Bank
 {
     public class Program
@@ -10,6 +13,7 @@ namespace Bank
             // Add services to the container.
 
             builder.Services.AddControllers();
+            builder.Services.AddDbContext<BankDbContext>(o => o.UseSqlServer(builder.Configuration.GetConnectionString("myconn")));
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();

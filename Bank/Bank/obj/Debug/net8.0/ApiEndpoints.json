@@ -1,5 +1,31 @@
 [
   {
+    "ContainingType": "Bank.Controllers.BankController",
+    "Method": "BranchRegister",
+    "RelativePath": "api/Bank/BranchRegister",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "b",
+        "Type": "Bank.Models.BranchDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.BankController",
+    "Method": "GetAllBranches",
+    "RelativePath": "api/Bank/GetAllBranches",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "Bank.Controllers.WeatherForecastController",
     "Method": "Get",
     "RelativePath": "WeatherForecast",
