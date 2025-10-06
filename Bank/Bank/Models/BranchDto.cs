@@ -10,6 +10,6 @@ namespace Bank.Models
 
         public string? Baddress { get; set; }
 
-        public string IfscCode { get; set; } = null!;
+        //public string IfscCode { get; set; } = null!;
     }
 }

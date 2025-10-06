@@ -1,5 +1,6 @@
 
 using Bank.Models;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 
 namespace Bank
@@ -11,6 +12,29 @@ namespace Bank
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
+            builder.Services.AddDistributedMemoryCache();
+            builder.Services.AddSession(options =>
+            {
+                options.IdleTimeout = TimeSpan.FromMinutes(30);
+                options.Cookie.HttpOnly = true;
+                options.Cookie.IsEssential = true;
+            });
+
+            //Add Authentication
+            builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+                        .AddCookie(options =>
+                        {
+                            options.LoginPath = "/api/Login"; // Redirect unauthenticated requests
+                            options.AccessDeniedPath = "/api/Login/AccessDenied";
+                        });
+
+            //Add Authorization
+            builder.Services.AddAuthorization(options =>
+            {
+                options.AddPolicy("BankAdmin", policy => policy.RequireRole("BankAdmin"));
+                options.AddPolicy("BranchManager", policy => policy.RequireRole("BranchManager"));
+                options.AddPolicy("Staff", policy => policy.RequireRole("Staff"));
+            });
 
             builder.Services.AddControllers();
             builder.Services.AddDbContext<BankDbContext>(o => o.UseSqlServer(builder.Configuration.GetConnectionString("myconn")));
@@ -27,10 +51,13 @@ namespace Bank
                 app.UseSwaggerUI();
             }
 
+            app.UseSession();
+
             app.UseHttpsRedirection();
 
-            app.UseAuthorization();
+            app.UseAuthentication();
 
+            app.UseAuthorization();
 
             app.MapControllers();
 
@@ -38,4 +65,3 @@ namespace Bank
         }
     }
 }
-

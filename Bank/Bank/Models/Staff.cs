@@ -17,7 +17,7 @@ public partial class Staff
 
     public string EmpPass { get; set; } = null!;
 
-    public int? BranchId { get; set; }
+    public int? BranchId { get; set; } = null!;
 
     public virtual Branch? Branch { get; set; }
 }

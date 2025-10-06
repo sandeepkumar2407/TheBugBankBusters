@@ -19,5 +19,13 @@ public partial class User
 
     public string Email { get; set; } = null!;
 
+    public string PANCard { get; set; } = null!;
+
+    public string AadharCard { get; set; } = null!;
+
+    public string LoginPassword { get; set; } = null!;
+
+    public string TransactionPassword { get; set; } = null!;
+
     public virtual ICollection<Account> Accounts { get; set; } = new List<Account>();
 }
