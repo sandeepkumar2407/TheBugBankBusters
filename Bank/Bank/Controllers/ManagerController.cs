@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Bank.Controllers
 {
@@ -32,38 +33,6 @@ namespace Bank.Controllers
                                         .Select(s => s[random.Next(s.Length)])
                                         .ToArray());
         }
-
-        //[HttpGet("Users")]
-        //public IActionResult GetAllUsers()
-        //{
-        //    try
-        //    {
-        //        var users = bankDbContext.Users
-        //                    .Select(u => new UserDto
-        //                    {
-        //                        UserId = u.UserId,
-        //                        UserName = u.Uname,
-        //                        DoB = u.DoB,
-        //                        UAddress = u.Uaddress,
-        //                        Gender = u.Gender,
-        //                        Mobile = u.Mobile,
-        //                        Email = u.Email,
-        //                        PANCard = u.PANCard,
-        //                        AadharCard = u.AadharCard
-        //                    })
-        //                    .ToList();
-
-        //        if (users.Count == 0)
-        //        {
-        //            return NotFound("There are no users for your bank!");
-        //        }
-        //        return Ok(users);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return BadRequest(ex.Message);
-        //    }
-        //}
 
         [HttpGet("Users")]
         public IActionResult GetAllUsers()
@@ -616,50 +585,6 @@ namespace Bank.Controllers
             }
         }
 
-        //[HttpPost("CreateAccount")]
-        //public IActionResult CreateAccount(AccountDto accountDto)
-        //{
-        //    try
-        //    {
-        //        if (accountDto == null)
-        //        {
-        //            return BadRequest("Enter correct data");
-        //        }
-
-        //        var user = bankDbContext.Users.Find(accountDto.UserId);
-        //        if (user == null)
-        //        {
-        //            return NotFound("User not found");
-        //        }
-
-        //        var branch = bankDbContext.Branches
-        //                                  .FirstOrDefault(b => b.IfscCode == accountDto.IfscCode);
-        //        if (branch == null)
-        //        {
-        //            return NotFound("Branch not found");
-        //        }
-
-        //        Account acc = new Account
-        //        {
-        //            UserId = accountDto.UserId,
-        //            AccType = accountDto.AccType,
-        //            Balance = accountDto.Balance,
-        //            DateOfJoining = DateTime.UtcNow,
-        //            IfscCode = branch.IfscCode,
-        //            AccountStatus = "Active"
-        //        };
-
-        //        bankDbContext.Accounts.Add(acc);
-        //        bankDbContext.SaveChanges();
-
-        //        return Ok("Account created successfully");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return BadRequest(ex.Message);
-        //    }
-        //}
-
         [HttpPost("CreateAccount")]
         public IActionResult CreateAccount(AccountDto accountDto)
         {
@@ -668,9 +593,11 @@ namespace Bank.Controllers
                 if (accountDto == null)
                     return BadRequest("Enter correct data");
 
-                var empId = HttpContext.Session.GetInt32("EmpId");
-                if (empId == null)
-                    return Unauthorized("Manager not logged in");
+                var empIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (empIdClaim == null)
+                    return Unauthorized("Login required");
+
+                int empId = int.Parse(empIdClaim);
 
                 var manager = bankDbContext.Staff.Find(empId);
                 if (manager == null)
@@ -712,35 +639,6 @@ namespace Bank.Controllers
 
 
 
-        //[HttpGet("GetAllStaff")]
-        //public IActionResult GetAllStaff()
-        //{
-        //    try
-        //    {
-        //        var emps = bankDbContext.Staff
-        //                    .Select(s => new StaffDto
-        //                    {
-        //                        EmpName = s.EmpName,
-        //                        EmpRole = s.EmpRole,
-        //                        EmpMobile = s.EmpMobile,
-        //                        EmpEmail = s.EmpEmail,
-        //                        //EmpPass = s.EmpPass,
-        //                        BranchId = s.BranchId
-        //                    });
-
-        //        if (emps.Count() == 0)
-        //        {
-        //            return NotFound("There are no Employees in your Bank");
-        //        }
-
-        //        return Ok(emps);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return BadRequest(ex.Message);
-        //    }
-        //}
-
         [HttpGet("GetAllStaff")]
         public IActionResult GetAllStaff()
         {
@@ -762,7 +660,7 @@ namespace Bank.Controllers
 
                 var emps = bankDbContext.Staff
                             .Where(s => s.BranchId == branchId)
-                            .Select(s => new StaffDto
+                            .Select(s => new StaffResponseDto
                             {
                                 EmpID = s.EmpId,
                                 EmpName = s.EmpName,
@@ -784,34 +682,6 @@ namespace Bank.Controllers
                 return BadRequest(ex.Message);
             }
         }
-
-        //[HttpGet("GetStaffByID/{id}")]
-        //public IActionResult GetStaffByID(int id)
-        //{
-        //    try
-        //    {
-        //        var emp = bankDbContext.Staff
-        //                    .Where(s => s.EmpId == id)
-        //                    .Select(s => new StaffDto
-        //                    {
-        //                        EmpName = s.EmpName,
-        //                        EmpRole = s.EmpRole,
-        //                        EmpMobile = s.EmpMobile,
-        //                        EmpEmail = s.EmpEmail,
-        //                        //EmpPass = s.EmpPass,
-        //                        BranchId = s.BranchId
-        //                    }).FirstOrDefault();
-        //        if (emp == null)
-        //        {
-        //            return NotFound($"Staff with StaffID {id} not found");
-        //        }
-        //        return Ok(emp);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return BadRequest(ex.Message);
-        //    }
-        //}
 
         [HttpGet("GetStaffByID/{id}")]
         public IActionResult GetStaffByID(int id)
@@ -835,8 +705,9 @@ namespace Bank.Controllers
 
                 var emp = bankDbContext.Staff
                             .Where(s => s.EmpId == id && s.BranchId == branchId)
-                            .Select(s => new StaffDto
+                            .Select(s => new StaffResponseDto
                             {
+                                EmpID = s.EmpId,
                                 EmpName = s.EmpName,
                                 EmpRole = s.EmpRole,
                                 EmpMobile = s.EmpMobile,
@@ -859,10 +730,3 @@ namespace Bank.Controllers
         }
     }
 }
-
-//Get all Users should retrieve all users list of the same branch as Manager
-//Get all Staff and Get Staff by ID should retrieve staff list in the same branch as logged in Manager
-//In Create Account, the account should be created with the same IFSC code of the branch of the logged in branch manager
-//In transactions Credit can happen only if account status is not "closed"
-//In transactions Debit must happen only if account status in "active"
-//In transactions Transfer can happen only if AccNo's account status is active and ToAcc's account status is not "closed" 

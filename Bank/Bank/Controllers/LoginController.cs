@@ -37,7 +37,7 @@ namespace Bank.Controllers
                 var claims = new List<Claim>
                 {
                     new Claim(ClaimTypes.NameIdentifier, emp.EmpId.ToString()),
-                    new Claim(ClaimTypes.Role, emp.EmpRole),
+                    new Claim(ClaimTypes.Role, emp.EmpRole)
                 };
 
                 if (emp.BranchId != null)

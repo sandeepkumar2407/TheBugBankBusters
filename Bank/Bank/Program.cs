@@ -11,6 +11,26 @@ namespace Bank
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAll",
+                    builder => builder
+                        .AllowAnyOrigin()
+                        .AllowAnyHeader()
+                        .AllowAnyMethod());
+
+                options.AddPolicy("AllowSpecificOrigin",
+                builder =>
+                {
+                    builder.WithOrigins("http://localhost:4200") 
+                          .AllowAnyHeader()
+                          .AllowAnyMethod()
+                          .AllowCredentials(); 
+                });
+            });
+
+
+
             // Add services to the container.
             builder.Services.AddDistributedMemoryCache();
             builder.Services.AddSession(options =>
@@ -54,6 +74,8 @@ namespace Bank
             app.UseSession();
 
             app.UseHttpsRedirection();
+
+            app.UseCors("AllowAll");
 
             app.UseAuthentication();
 

@@ -168,7 +168,6 @@ namespace Bank.Controllers
                     EmpRole = staffDto.EmpRole,
                     EmpPass = generatedPassword,
                     BranchId = staffDto.BranchId,
-
                 };
                 bankDbContext.Staff.Add(st);
                 bankDbContext.SaveChanges();
@@ -246,35 +245,6 @@ namespace Bank.Controllers
 
         }
 
-        //[HttpGet("GetAllStaff")]
-        //public IActionResult GetAllStaff()
-        //{
-        //    try
-        //    {
-        //        var emps = bankDbContext.Staff
-        //                    .Select(s => new StaffDto
-        //                    {
-        //                        EmpName = s.EmpName,
-        //                        EmpRole = s.EmpRole,
-        //                        EmpMobile = s.EmpMobile,
-        //                        EmpEmail = s.EmpEmail,
-        //                        //EmpPass = s.EmpPass,
-        //                        BranchId = s.BranchId
-        //                    });
-
-        //        if (emps.Count() == 0)
-        //        {
-        //            return NotFound("There are no Employees in your Bank");
-        //        }
-
-        //        return Ok(emps);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return BadRequest(ex.Message);
-        //    }
-        //}
-
         [HttpGet("GetStaffByBranchId/{branchId}")]
         public IActionResult GetStaffByBranchId(int branchId)
         {
@@ -282,7 +252,7 @@ namespace Bank.Controllers
             {
                 var staffList = bankDbContext.Staff
                     .Where(s => s.BranchId == branchId)
-                    .Select(s => new StaffDto
+                    .Select(s => new StaffResponseDto
                     {
                         EmpID = s.EmpId,
                         EmpName = s.EmpName,
@@ -314,13 +284,13 @@ namespace Bank.Controllers
             {
                 var emp = bankDbContext.Staff
                             .Where(s => s.EmpId == id)
-                            .Select(s => new StaffDto
+                            .Select(s => new StaffResponseDto
                             {
+                                EmpID = s.EmpId,
                                 EmpName = s.EmpName,
                                 EmpRole = s.EmpRole,
                                 EmpMobile = s.EmpMobile,
                                 EmpEmail = s.EmpEmail,
-                                //EmpPass = s.EmpPass,
                                 BranchId = s.BranchId
                             }).FirstOrDefault();
                 if (emp == null)

@@ -1057,10 +1057,6 @@
       "StaffDto": {
         "type": "object",
         "properties": {
-          "empID": {
-            "type": "integer",
-            "format": "int32"
-          },
           "empName": {
             "type": "string",
             "nullable": true

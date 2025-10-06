@@ -1,7 +1,8 @@
 ﻿namespace Bank.Models
 {
-    public class StaffDto
+    public class StaffResponseDto
     {
+        public int EmpID { get; set; }
         public string EmpName { get; set; } = null!;
 
         public string EmpRole { get; set; } = null!;
