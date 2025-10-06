@@ -71,11 +71,20 @@ namespace Bank.Controllers
             try
             {
                 //Get branch ID from session
-                var branchId = HttpContext.Session.GetInt32("BranchId");
-                if (branchId == null)
+                //var branchId = HttpContext.Session.GetInt32("BranchId");
+                //if (branchId == null)
+                //{
+                //    return Unauthorized("Login required to view users");
+                //}
+
+                var branchIdClaim = User.Claims.FirstOrDefault(c => c.Type == "BranchId")?.Value;
+
+                if (branchIdClaim == null)
                 {
                     return Unauthorized("Login required to view users");
                 }
+
+                int branchId = int.Parse(branchIdClaim);
 
                 //Get IFSC of logged-in branch
                 var branch = bankDbContext.Branches.FirstOrDefault(b => b.BranchId == branchId);
@@ -737,11 +746,19 @@ namespace Bank.Controllers
         {
             try
             {
-                var branchId = HttpContext.Session.GetInt32("BranchId");
-                if (branchId == null)
+                //var branchId = HttpContext.Session.GetInt32("BranchId");
+                //if (branchId == null)
+                //{
+                //    return Unauthorized("Login required to view staff");
+                //}
+                var branchIdClaim = User.Claims.FirstOrDefault(c => c.Type == "BranchId")?.Value;
+
+                if (branchIdClaim == null)
                 {
-                    return Unauthorized("Login required to view staff");
+                    return Unauthorized("Login required to view users");
                 }
+
+                int branchId = int.Parse(branchIdClaim);
 
                 var emps = bankDbContext.Staff
                             .Where(s => s.BranchId == branchId)
@@ -801,11 +818,20 @@ namespace Bank.Controllers
         {
             try
             {
-                var branchId = HttpContext.Session.GetInt32("BranchId");
-                if (branchId == null)
+                //var branchId = HttpContext.Session.GetInt32("BranchId");
+                //if (branchId == null)
+                //{
+                //    return Unauthorized("Login required to view staff details");
+                //}
+
+                var branchIdClaim = User.Claims.FirstOrDefault(c => c.Type == "BranchId")?.Value;
+
+                if (branchIdClaim == null)
                 {
-                    return Unauthorized("Login required to view staff details");
+                    return Unauthorized("Login required to view users");
                 }
+
+                int branchId = int.Parse(branchIdClaim);
 
                 var emp = bankDbContext.Staff
                             .Where(s => s.EmpId == id && s.BranchId == branchId)

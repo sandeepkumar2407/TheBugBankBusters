@@ -71,11 +71,20 @@ namespace Bank.Controllers
             try
             {
                 //Get branch ID from session
-                var branchId = HttpContext.Session.GetInt32("BranchId");
-                if (branchId == null)
+                //var branchId = HttpContext.Session.GetInt32("BranchId");
+                //if (branchId == null)
+                //{
+                //    return Unauthorized("Login required to view users");
+                //}
+
+                var branchIdClaim = User.Claims.FirstOrDefault(c => c.Type == "BranchId")?.Value;
+
+                if (branchIdClaim == null)
                 {
                     return Unauthorized("Login required to view users");
                 }
+
+                int branchId = int.Parse(branchIdClaim);
 
                 //Get IFSC of logged-in branch
                 var branch = bankDbContext.Branches.FirstOrDefault(b => b.BranchId == branchId);
@@ -673,11 +682,20 @@ namespace Bank.Controllers
                     return BadRequest("Enter correct data");
                 }
 
-                var branchId = HttpContext.Session.GetInt32("BranchId");
-                if (branchId == null)
+                //var branchId = HttpContext.Session.GetInt32("BranchId");
+                //if (branchId == null)
+                //{
+                //    return Unauthorized("Login required to create account");
+                //}
+
+                var branchIdClaim = User.Claims.FirstOrDefault(c => c.Type == "BranchId")?.Value;
+
+                if (branchIdClaim == null)
                 {
-                    return Unauthorized("Login required to create account");
+                    return Unauthorized("Login required to view users");
                 }
+
+                int branchId = int.Parse(branchIdClaim);
 
                 var branch = bankDbContext.Branches.FirstOrDefault(b => b.BranchId == branchId);
                 if (branch == null)
