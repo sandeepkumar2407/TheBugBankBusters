@@ -69,7 +69,7 @@ namespace Bank.Controllers
                 return BadRequest(ex.Message);
             }
         }
-        [HttpGet("GetBranchById/${id}")]
+        [HttpGet("GetBranchById/{id}")]
         public IActionResult GetBranchById(int id) {
             try
             {
