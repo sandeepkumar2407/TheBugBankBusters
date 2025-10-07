@@ -13,11 +13,14 @@ namespace Bank
 
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy("AllowAll",
-                    builder => builder
-                        .AllowAnyOrigin()
-                        .AllowAnyHeader()
-                        .AllowAnyMethod());
+                //options.AddPolicy("AllowAll",
+                //    builder => 
+                //        builder
+                //        .AllowAnyOrigin()
+                //        .AllowAnyHeader()
+                //        .AllowAnyMethod()
+                //        .AllowCredentials()
+                //);
 
                 options.AddPolicy("AllowSpecificOrigin",
                 builder =>
@@ -46,7 +49,11 @@ namespace Bank
                         {
                             options.LoginPath = "/api/Login"; // Redirect unauthenticated requests
                             options.AccessDeniedPath = "/api/Login/AccessDenied";
+                            options.Cookie.HttpOnly = true;
+                            options.Cookie.SameSite = SameSiteMode.None; //  for Angular
+                            options.Cookie.SecurePolicy = CookieSecurePolicy.Always; //  HTTPS only
                         });
+
 
             //Add Authorization
             builder.Services.AddAuthorization(options =>
@@ -75,7 +82,7 @@ namespace Bank
 
             app.UseHttpsRedirection();
 
-            app.UseCors("AllowAll");
+            app.UseCors("AllowSpecificOrigin");
 
             app.UseAuthentication();
 

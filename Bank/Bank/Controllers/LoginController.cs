@@ -1,7 +1,6 @@
 ﻿using Bank.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -11,29 +10,29 @@ namespace Bank.Controllers
     [ApiController]
     public class LoginController : ControllerBase
     {
-        private readonly BankDbContext bankDbContext;
+        private readonly BankDbContext _context;
 
         public LoginController(BankDbContext context)
         {
-            bankDbContext = context;
+            _context = context;
         }
 
         [HttpPost]
-        public async Task<IActionResult> Login(LoginDto login)
+        public async Task<IActionResult> Login([FromBody] LoginDto login)
         {
             try
             {
                 if (login == null)
                     return BadRequest("Invalid login data");
 
-                var emp = bankDbContext.Staff.FirstOrDefault(e => e.EmpId == login.EmpId);
+                var emp = _context.Staff.FirstOrDefault(e => e.EmpId == login.EmpId);
                 if (emp == null)
                     return NotFound("Employee not found");
 
                 if (emp.EmpPass != login.Password)
                     return Unauthorized("Invalid password");
 
-                //Create Claims
+                // ✅ Create claims
                 var claims = new List<Claim>
                 {
                     new Claim(ClaimTypes.NameIdentifier, emp.EmpId.ToString()),
@@ -43,12 +42,22 @@ namespace Bank.Controllers
                 if (emp.BranchId != null)
                     claims.Add(new Claim("BranchId", emp.BranchId.ToString()!));
 
-                //Create Claims Identity
+                // ✅ Create identity
                 var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
 
-                //Sign In User
-                await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,
-                    new ClaimsPrincipal(claimsIdentity));
+                // ✅ Set authentication cookie
+                var authProperties = new AuthenticationProperties
+                {
+                    IsPersistent = true,
+                    ExpiresUtc = DateTime.UtcNow.AddHours(2),
+                    AllowRefresh = true
+                };
+
+                await HttpContext.SignInAsync(
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    new ClaimsPrincipal(claimsIdentity),
+                    authProperties
+                );
 
                 return Ok(new
                 {
