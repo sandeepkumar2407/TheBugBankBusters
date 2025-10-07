@@ -36,7 +36,7 @@
         }
       }
     },
-    "/api/Admin/GetBranchById/${id}": {
+    "/api/Admin/GetBranchById/{id}": {
       "get": {
         "tags": [
           "Admin"
@@ -288,18 +288,6 @@
     },
     "/api/Login/Logout": {
       "post": {
-        "tags": [
-          "Login"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/Login/AccessDenied": {
-      "get": {
         "tags": [
           "Login"
         ],

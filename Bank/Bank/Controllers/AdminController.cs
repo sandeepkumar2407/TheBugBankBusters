@@ -1,12 +1,9 @@
 ﻿using Bank.Models;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System.Globalization;
+using System.Linq;
 
 namespace Bank.Controllers
 {
-    [Authorize(Roles = "BankAdmin")]
     [Route("api/[controller]")]
     [ApiController]
     public class AdminController : ControllerBase
@@ -18,12 +15,7 @@ namespace Bank.Controllers
             this.bankDbContext = _bankDbContext;
         }
 
-
-
-
-        //////BRANCH PART///////
-
-
+        ////////// BRANCH PART //////////
 
         private string GenerateUniqueIFSC()
         {
@@ -69,11 +61,12 @@ namespace Bank.Controllers
                 return BadRequest(ex.Message);
             }
         }
+
         [HttpGet("GetBranchById/{id}")]
-        public IActionResult GetBranchById(int id) {
+        public IActionResult GetBranchById(int id)
+        {
             try
             {
-                // Find branch by ID
                 var branch = bankDbContext.Branches.FirstOrDefault(b => b.BranchId == id);
 
                 if (branch == null)
@@ -151,12 +144,7 @@ namespace Bank.Controllers
             }
         }
 
-
-
-
-
-        //////STAFF PART///////
-
+        ////////// STAFF PART //////////
 
         private static string GenerateRandomPassword(int length)
         {
@@ -198,14 +186,13 @@ namespace Bank.Controllers
                 bankDbContext.Staff.Add(st);
                 bankDbContext.SaveChanges();
                 return Ok($"Staff added successfully\n{st}");
-
             }
             catch (Exception ex)
             {
                 return BadRequest(ex.Message);
             }
         }
-        
+
         [HttpPut("UpdateStaff/{id}")]
         public IActionResult UpdateStaff([FromRoute] int id, [FromBody] StaffUpdateDto staffUpdateDto)
         {
@@ -216,7 +203,6 @@ namespace Bank.Controllers
                 var employee = bankDbContext.Staff.Find(id);
                 if (employee == null) return NotFound("Employee not found");
 
-                // Update only provided fields
                 if (!string.IsNullOrWhiteSpace(staffUpdateDto.EmpName))
                     employee.EmpName = staffUpdateDto.EmpName;
 
@@ -264,11 +250,10 @@ namespace Bank.Controllers
 
                 return Ok("Deleted successfully");
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return BadRequest(ex.Message);
             }
-
         }
 
         [HttpGet("GetStaffByBranchId/{branchId}")]
@@ -301,7 +286,6 @@ namespace Bank.Controllers
                 return BadRequest(ex.Message);
             }
         }
-
 
         [HttpGet("GetStaffByID/{id}")]
         public IActionResult GetStaffByID(int id)

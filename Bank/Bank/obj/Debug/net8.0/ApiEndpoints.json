@@ -44,7 +44,7 @@
   {
     "ContainingType": "Bank.Controllers.AdminController",
     "Method": "GetBranchById",
-    "RelativePath": "api/Admin/GetBranchById/${id}",
+    "RelativePath": "api/Admin/GetBranchById/{id}",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
@@ -161,16 +161,6 @@
         "IsRequired": true
       }
     ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "Bank.Controllers.LoginController",
-    "Method": "AccessDenied",
-    "RelativePath": "api/Login/AccessDenied",
-    "HttpMethod": "GET",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [],
     "ReturnTypes": []
   },
   {
