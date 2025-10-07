@@ -43,6 +43,22 @@
   },
   {
     "ContainingType": "Bank.Controllers.AdminController",
+    "Method": "GetBranchById",
+    "RelativePath": "api/Admin/GetBranchById/${id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.AdminController",
     "Method": "GetStaffByBranchId",
     "RelativePath": "api/Admin/GetStaffByBranchId/{branchId}",
     "HttpMethod": "GET",

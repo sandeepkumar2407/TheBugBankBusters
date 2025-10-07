@@ -69,6 +69,32 @@ namespace Bank.Controllers
                 return BadRequest(ex.Message);
             }
         }
+        [HttpGet("GetBranchById/${id}")]
+        public IActionResult GetBranchById(int id) {
+            try
+            {
+                // Find branch by ID
+                var branch = bankDbContext.Branches.FirstOrDefault(b => b.BranchId == id);
+
+                if (branch == null)
+                {
+                    return NotFound($"No Branch found with ID: {id}");
+                }
+                var br = new BranchResponseDto()
+                {
+                    BranchId = branch.BranchId,
+                    BranchName = branch.BranchName,
+                    Baddress = branch.Baddress,
+                    IfscCode = branch.IfscCode
+                };
+
+                return Ok(br);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
 
         [HttpGet("GetAllBranches")]
         public IActionResult GetAllBranches()
