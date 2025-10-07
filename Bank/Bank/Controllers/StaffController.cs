@@ -307,6 +307,12 @@ namespace Bank.Controllers
                     return NotFound("The account is not found in the bank. Please enter a correct account number");
                 }
 
+                if (creditDebitDto.Amount > 250000)
+                {
+                    SaveTransaction(creditDebitDto.AccNo, null, creditDebitDto.Amount, creditDebitDto.TransacType, "Failed", "Higher Order Transaction");
+                    bankDbContext.SaveChanges();
+                    return BadRequest("Higher Order Transaction");
+                }
                 if (creditDebitDto.TransacType.Equals("Credit", StringComparison.OrdinalIgnoreCase))
                 {
                     if (account.AccountStatus.Equals("Closed", StringComparison.OrdinalIgnoreCase))
@@ -402,6 +408,13 @@ namespace Bank.Controllers
                     SaveTransaction(transferDto.FromAcc, transferDto.ToAcc, transferDto.Amount, "Transfer", "Failed", "Invalid amount");
                     bankDbContext.SaveChanges();
                     return BadRequest("Amount must be greater than zero");
+                }
+
+                if (transferDto.Amount > 250000)
+                {
+                    SaveTransaction(transferDto.FromAcc, transferDto.ToAcc, transferDto.Amount, "Transfer", "Failed", "Higher Order Transaction");
+                    bankDbContext.SaveChanges();
+                    return BadRequest("Higher Order Transaction");
                 }
 
                 if (fromAccount.Balance < transferDto.Amount)
