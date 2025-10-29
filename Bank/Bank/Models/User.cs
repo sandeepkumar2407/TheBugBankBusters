@@ -27,5 +27,9 @@ public partial class User
 
     public string TransactionPassword { get; set; } = null!;
 
+    public Boolean SoftDelete { get; set; }
+
+    public string Role { get; set; } = null!;
+
     public virtual ICollection<Account> Accounts { get; set; } = new List<Account>();
 }

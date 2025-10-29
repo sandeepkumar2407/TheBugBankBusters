@@ -1,12 +1,17 @@
 ﻿using Bank.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Linq;
+using System.Security.Claims;
 
 namespace Bank.Controllers
 {
+    
     [Route("api/[controller]")]
     [ApiController]
-    public class ManagerController : ControllerBase
+    [Authorize(Roles = "BranchManager")]
+    public class ManagerController : BaseController
     {
         readonly BankDbContext bankDbContext;
 
@@ -25,27 +30,85 @@ namespace Bank.Controllers
                                         .Select(s => s[random.Next(s.Length)])
                                         .ToArray());
         }
+        private bool VerifyPassword(string? inputPassword, string hashedPassword)
+        {
+            //return BCrypt.Net.BCrypt.Verify(inputPassword, hashedPassword);
+            return inputPassword == hashedPassword;
+            //return true;
+        }
 
+        [HttpPatch("UpdateLoginPassword")]
+        public IActionResult UpdateLoginPassword(UpdatePassDto passDto)
+        {
+            try
+            {
+                var EmpId = GetEmpId();
+                if (passDto == null)
+                {
+                    return BadRequest("Invalid request");
+                }
+                    
+                var staff = bankDbContext.Staff.Find(EmpId);
+
+                if (staff == null)
+                {
+                    return NotFound("Staff not found for this staff ID");
+                }
+                    
+                if (!VerifyPassword(passDto.previousPassword, staff.EmpPass))
+                {
+                    return BadRequest("Your old password is incorrect");
+                }
+                    
+                if (passDto.newPassword != passDto.confirmPassword)
+                {
+                    return BadRequest("New password and confirmation do not match");
+                }
+                    
+                if (VerifyPassword(passDto.newPassword, staff.EmpPass))
+                {
+                    return BadRequest("New password cannot be the same as the old password");
+                }
+                    
+                staff.EmpPass = passDto.newPassword;
+                bankDbContext.SaveChanges();
+
+                return Ok("Password updated successfully");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Error updating password: {ex.Message}");
+            }
+        }
         [HttpGet("Users")]
         public IActionResult GetAllUsers()
         {
             try
             {
-                var users = bankDbContext.Users.Select(u => new UserDto
-                {
-                    UserId = u.UserId,
-                    UserName = u.Uname,
-                    DoB = u.DoB,
-                    UAddress = u.Uaddress,
-                    Gender = u.Gender,
-                    Mobile = u.Mobile,
-                    Email = u.Email,
-                    PANCard = u.PANCard,
-                    AadharCard = u.AadharCard
-                }).ToList();
+                var branchId = GetBranchId();
+                if (branchId == null)
+                    return Unauthorized("Branch information not present in token");
+
+                // Fetch users who have at least one account in this branch and are not soft-deleted
+                var users = (from u in bankDbContext.Users
+                             join a in bankDbContext.Accounts on u.UserId equals a.UserId
+                             join b in bankDbContext.Branches on a.IfscCode equals b.IfscCode
+                             where b.BranchId == branchId && u.SoftDelete == true
+                             select new UserDto
+                             {
+                                 UserId = u.UserId,
+                                 UserName = u.Uname,
+                                 DoB = u.DoB,
+                                 UAddress = u.Uaddress,
+                                 Gender = u.Gender,
+                                 Mobile = u.Mobile,
+                                 Email = u.Email,
+                                 PANCard = u.PANCard,
+                                 AadharCard = u.AadharCard
+                             }).Distinct().ToList();
 
                 if (users.Count == 0)
-                    return NotFound("No users found");
+                    return NotFound("No users found for this branch");
 
                 return Ok(users);
             }
@@ -60,8 +123,9 @@ namespace Bank.Controllers
         {
             try
             {
+                // GLOBAL: Allow fetching any user by ID (not branch-scoped)
                 var user = bankDbContext.Users
-                    .Where(u => u.UserId == id)
+                    .Where(u => u.UserId == id && u.SoftDelete == true)
                     .Select(u => new UserDto
                     {
                         UserId = u.UserId,
@@ -95,6 +159,19 @@ namespace Bank.Controllers
                 if (newUser == null)
                     return BadRequest("Invalid user data");
 
+                // Validate uniqueness among active users
+                if (!string.IsNullOrWhiteSpace(newUser.Mobile) && bankDbContext.Users.Any(u => u.Mobile == newUser.Mobile && u.SoftDelete == true))
+                    return BadRequest("Mobile number already exists");
+
+                if (!string.IsNullOrWhiteSpace(newUser.Email) && bankDbContext.Users.Any(u => u.Email == newUser.Email && u.SoftDelete == true))
+                    return BadRequest("Email already exists");
+
+                if (!string.IsNullOrWhiteSpace(newUser.PANCard) && bankDbContext.Users.Any(u => u.PANCard == newUser.PANCard && u.SoftDelete == true))
+                    return BadRequest("PAN card already exists");
+
+                if (!string.IsNullOrWhiteSpace(newUser.AadharCard) && bankDbContext.Users.Any(u => u.AadharCard == newUser.AadharCard && u.SoftDelete == true))
+                    return BadRequest("Aadhar card already exists");
+
                 string generatedPassword = GenerateRandomPassword(12);
 
                 User u = new User()
@@ -108,12 +185,28 @@ namespace Bank.Controllers
                     PANCard = newUser.PANCard,
                     AadharCard = newUser.AadharCard,
                     LoginPassword = generatedPassword,
-                    TransactionPassword = generatedPassword
+                    TransactionPassword = generatedPassword,
+                    SoftDelete = true,
+                    Role = "Customer"
                 };
                 bankDbContext.Users.Add(u);
                 bankDbContext.SaveChanges();
 
-                return Ok("User added to the bank");
+                var response = new
+                {
+                    message = "User added successfully. Please change your password.",
+                    userDetails = new
+                    {
+                        UserId = u.UserId,
+                        UserName = u.Uname,
+                        Email = u.Email,
+                        Mobile = u.Mobile,
+                        LoginPassword = u.LoginPassword,
+                        TransactionPassword = u.TransactionPassword
+                    }
+                };
+
+                return Ok(response);
             }
             catch (Exception ex)
             {
@@ -133,10 +226,22 @@ namespace Bank.Controllers
                 if (user == null)
                     return NotFound($"User with ID {id} not found");
 
+                // GLOBAL: allow updating by id (no branch restriction)
                 if (!string.IsNullOrEmpty(userUpdate.UserName)) user.Uname = userUpdate.UserName;
-                if (!string.IsNullOrEmpty(userUpdate.Email)) user.Email = userUpdate.Email;
+                if (!string.IsNullOrEmpty(userUpdate.Email))
+                {
+                    // ensure email uniqueness (excluding current user)
+                    if (bankDbContext.Users.Any(x => x.Email == userUpdate.Email && x.UserId != id && x.SoftDelete == true))
+                        return BadRequest("Email already in use by another user");
+                    user.Email = userUpdate.Email;
+                }
                 if (!string.IsNullOrEmpty(userUpdate.UAddress)) user.Uaddress = userUpdate.UAddress;
-                if (!string.IsNullOrEmpty(userUpdate.Mobile)) user.Mobile = userUpdate.Mobile;
+                if (!string.IsNullOrEmpty(userUpdate.Mobile))
+                {
+                    if (bankDbContext.Users.Any(x => x.Mobile == userUpdate.Mobile && x.UserId != id && x.SoftDelete == true))
+                        return BadRequest("Mobile already in use by another user");
+                    user.Mobile = userUpdate.Mobile;
+                }
 
                 bankDbContext.SaveChanges();
                 return Ok("User details updated successfully");
@@ -147,19 +252,47 @@ namespace Bank.Controllers
             }
         }
 
-        [HttpDelete("DeleteUser/{id}")]
+        [HttpPut("DeleteUser/{id}")]
         public IActionResult DeleteUser(int id)
         {
             try
             {
                 var user = bankDbContext.Users.Find(id);
                 if (user == null)
+                {
                     return NotFound($"User with ID {id} not found");
+                }
+                    
+                var branchId = GetBranchId();
+                if (branchId == null)
+                {
+                    return Unauthorized("Branch information not present in token");
+                }
+                    
+                var userHasAccountInBranch = bankDbContext.Accounts.Any(a => a.UserId == id && bankDbContext.Branches.Any(b => b.IfscCode == a.IfscCode && b.BranchId == branchId));
+                if (!userHasAccountInBranch)
+                {
+                    return Unauthorized("You are not authorized to delete this user");
+                }
+                    
+                user.SoftDelete = false;
 
-                bankDbContext.Users.Remove(user);
+                var accounts = bankDbContext.Accounts.Where(a => a.UserId == id).ToList();
+                foreach (var acc in accounts)
+                {
+                    if (acc.Balance > 0)
+                    {
+                        // Create a debit transaction for the entire balance
+                        SaveTransaction(acc.AccNo, null, acc.Balance, "Debit", "Completed", "Account closed due to user deletion");
+                        acc.Balance = 0;
+                    }
+
+                    acc.AccountStatus = "Block";
+                }
+
                 bankDbContext.SaveChanges();
 
-                return Ok("User removed successfully");
+                return Ok("User removed successfully and their accounts were blocked with balances debited");
             }
             catch (Exception ex)
             {
@@ -189,7 +322,7 @@ namespace Bank.Controllers
         {
             try
             {
-                if (accNo == null)
+                if (accNo == null || accNo< 1000000)
                     return BadRequest("Enter account number");
 
                 var transactions = bankDbContext.Transactions
@@ -222,6 +355,10 @@ namespace Bank.Controllers
         {
             try
             {
+                if (id < 1000000000)
+                {
+                    return BadRequest("Enter valid transaction ID");
+                }
                 var trans = bankDbContext.Transactions
                     .Where(t => t.TransacId == id)
                     .Select(t => new TransactionResponseDto
@@ -254,8 +391,10 @@ namespace Bank.Controllers
             try
             {
                 if (creditDebitDto == null)
+                {
                     return BadRequest("Enter transaction details");
-
+                }
+                    
                 var account = bankDbContext.Accounts.Find(creditDebitDto.AccNo);
                 if (account == null)
                 {
@@ -271,20 +410,43 @@ namespace Bank.Controllers
                     return BadRequest("Amount must be greater than zero");
                 }
 
-                if (creditDebitDto.TransacType.Equals("Credit", StringComparison.OrdinalIgnoreCase))
-                    account.Balance += creditDebitDto.Amount;
-                else if (creditDebitDto.TransacType.Equals("Debit", StringComparison.OrdinalIgnoreCase))
+                // For Debit: account must be Active
+                if (creditDebitDto.TransacType.Equals("Debit", StringComparison.OrdinalIgnoreCase))
                 {
+                    if (!string.Equals(account.AccountStatus, "Active", StringComparison.OrdinalIgnoreCase))
+                    {
+                        SaveTransaction(creditDebitDto.AccNo, null, creditDebitDto.Amount, "Debit", "Failed", "Account not Active for debit");
+                        bankDbContext.SaveChanges();
+                        return BadRequest("Account must be Active to perform debit");
+                    }
+
                     if (account.Balance < creditDebitDto.Amount)
                     {
                         SaveTransaction(creditDebitDto.AccNo, null, creditDebitDto.Amount, "Debit", "Failed", "Insufficient balance");
                         bankDbContext.SaveChanges();
                         return BadRequest("Insufficient balance");
                     }
+
                     account.Balance -= creditDebitDto.Amount;
                 }
+                else if (creditDebitDto.TransacType.Equals("Credit", StringComparison.OrdinalIgnoreCase))
+                {
+                    // For Credit: account must NOT be Blocked
+                    if (string.Equals(account.AccountStatus, "Blocked", StringComparison.OrdinalIgnoreCase))
+                    {
+                        SaveTransaction(creditDebitDto.AccNo, null, creditDebitDto.Amount, "Credit", "Failed", "Account is Blocked - cannot credit");
+                        bankDbContext.SaveChanges();
+                        return BadRequest("Cannot credit a Blocked account");
+                    }
+
+                    account.Balance += creditDebitDto.Amount;
+                }
                 else
+                {
+                    SaveTransaction(creditDebitDto.AccNo, null, creditDebitDto.Amount, creditDebitDto.TransacType, "Failed", "Invalid transaction type");
+                    bankDbContext.SaveChanges();
                     return BadRequest("Invalid transaction type");
+                }
 
                 var transaction = new Transaction
                 {
@@ -300,7 +462,21 @@ namespace Bank.Controllers
                 bankDbContext.Transactions.Add(transaction);
                 bankDbContext.SaveChanges();
 
-                return Ok($"Transaction {creditDebitDto.TransacType} of {creditDebitDto.Amount} successful");
+                var response = new
+                {
+                    message = $"Transaction {creditDebitDto.TransacType} successful",
+                    transactionDetails = new
+                    {
+                        TransactionId = transaction.TransacId,
+                        AccountNo = transaction.AccNo,
+                        TransactionType = transaction.TransacType,
+                        Amount = transaction.Amount,
+                        Timestamp = transaction.TimeStamps.ToString("dd-MM-yyyy HH:mm"),
+                        Status = transaction.TransacStatus,
+                        CurrentBalance = account.Balance
+                    }
+                };
+                return Ok(response);
             }
             catch (Exception ex)
             {
@@ -314,22 +490,56 @@ namespace Bank.Controllers
             try
             {
                 if (transferDto == null)
+                {
                     return BadRequest("Enter transaction details");
-
+                }
+                    
                 var fromAccount = bankDbContext.Accounts.Find(transferDto.FromAcc);
                 var toAccount = bankDbContext.Accounts.Find(transferDto.ToAcc);
 
                 if (fromAccount == null || toAccount == null)
+                {
+                    SaveTransaction(transferDto.FromAcc, transferDto.ToAcc, transferDto.Amount, "Transfer", "Failed", "Invalid account(s)");
+                    bankDbContext.SaveChanges();
                     return NotFound("Invalid account(s)");
+                }
 
                 if (transferDto.Amount <= 0)
+                {
+                    SaveTransaction(transferDto.FromAcc, transferDto.ToAcc, transferDto.Amount, "Transfer", "Failed", "Invalid amount");
+                    bankDbContext.SaveChanges();
                     return BadRequest("Amount must be greater than zero");
+                }
 
                 if (transferDto.FromAcc == transferDto.ToAcc)
+                {
+                    SaveTransaction(transferDto.FromAcc, transferDto.ToAcc, transferDto.Amount, "Transfer", "Failed", "Cannot transfer to the same account");
+                    bankDbContext.SaveChanges();
                     return BadRequest("Cannot transfer to the same account");
+                }
+
+                // FromAcc must be Active
+                if (!string.Equals(fromAccount.AccountStatus, "Active", StringComparison.OrdinalIgnoreCase))
+                {
+                    SaveTransaction(transferDto.FromAcc, transferDto.ToAcc, transferDto.Amount, "Transfer", "Failed", "From account not Active");
+                    bankDbContext.SaveChanges();
+                    return BadRequest("From account must be Active");
+                }
+
+                // ToAcc must NOT be Blocked
+                if (string.Equals(toAccount.AccountStatus, "Blocked", StringComparison.OrdinalIgnoreCase))
+                {
+                    SaveTransaction(transferDto.FromAcc, transferDto.ToAcc, transferDto.Amount, "Transfer", "Failed", "To account Blocked");
+                    bankDbContext.SaveChanges();
+                    return BadRequest("To account is Blocked and cannot receive transfers");
+                }
 
                 if (fromAccount.Balance < transferDto.Amount)
+                {
+                    SaveTransaction(transferDto.FromAcc, transferDto.ToAcc, transferDto.Amount, "Transfer", "Failed", "Insufficient balance");
+                    bankDbContext.SaveChanges();
                     return BadRequest("Insufficient balance");
+                }
 
                 fromAccount.Balance -= transferDto.Amount;
                 toAccount.Balance += transferDto.Amount;
@@ -347,7 +557,22 @@ namespace Bank.Controllers
                 bankDbContext.Transactions.Add(transaction);
                 bankDbContext.SaveChanges();
 
-                return Ok($"Transferred {transferDto.Amount} successfully");
+                var response = new
+                {
+                    message = $"Transaction Transfer successful",
+                    transactionDetails = new
+                    {
+                        TransactionId = transaction.TransacId,
+                        AccountNo = transaction.AccNo,
+                        ReceiverAccountNo = transaction.ToAcc,
+                        TransactionType = transaction.TransacType,
+                        Amount = transaction.Amount,
+                        Timestamp = transaction.TimeStamps.ToString("dd-MM-yyyy HH:mm"),
+                        Status = transaction.TransacStatus,
+                        CurrentBalance = fromAccount.Balance
+                    }
+                };
+                return Ok(response);
             }
             catch (Exception ex)
             {
@@ -361,12 +586,17 @@ namespace Bank.Controllers
             try
             {
                 var transaction = bankDbContext.Transactions.Find(id);
+
                 if (transaction == null)
+                {
                     return NotFound($"Transaction {id} not found");
-
+                }
+                    
                 if (!transaction.TransacStatus.Equals("Failed", StringComparison.OrdinalIgnoreCase))
+                {
                     return BadRequest("Only failed transactions can be deleted");
-
+                }
+                    
                 bankDbContext.Transactions.Remove(transaction);
                 bankDbContext.SaveChanges();
 
@@ -385,10 +615,15 @@ namespace Bank.Controllers
         {
             try
             {
+                if (id < 1000000)
+                {
+                    return BadRequest("Provide valid id");
+                }
+                
                 var account = (from a in bankDbContext.Accounts
                                join u in bankDbContext.Users on a.UserId equals u.UserId
                                join b in bankDbContext.Branches on a.IfscCode equals b.IfscCode
-                               where a.AccNo == id
+                               where (a.AccNo == id && u.SoftDelete == true)
                                select new AccountResponseDto
                                {
                                    AccNo = a.AccNo,
@@ -407,8 +642,10 @@ namespace Bank.Controllers
                                }).FirstOrDefault();
 
                 if (account == null)
+                {
                     return NotFound($"Account with ID {id} not found");
-
+                }
+                    
                 return Ok(account);
             }
             catch (Exception ex)
@@ -423,15 +660,30 @@ namespace Bank.Controllers
             try
             {
                 if (accountDto == null)
+                {
                     return BadRequest("Enter correct data");
-
+                }
+                    
                 var user = bankDbContext.Users.Find(accountDto.UserId);
-                if (user == null)
-                    return NotFound("User not found");
 
-                var branch = bankDbContext.Branches.FirstOrDefault();
+                if (user == null || user.SoftDelete == false)
+                {
+                    return NotFound("User not found");
+                }
+
+                // Determine branch IFSC for this manager's branch
+                var branchId = GetBranchId();
+                if (branchId == null)
+                {
+                    return Unauthorized("Branch information not present in token");
+                }
+                    
+                var branch = bankDbContext.Branches.FirstOrDefault(b => b.BranchId == branchId);
+
                 if (branch == null)
+                {
                     return NotFound("Branch not found");
+                }
 
                 Account acc = new Account
                 {
@@ -445,8 +697,23 @@ namespace Bank.Controllers
 
                 bankDbContext.Accounts.Add(acc);
                 bankDbContext.SaveChanges();
+                var response = new
+                {
+                    message = "Account created successfully.",
+                    accountDetails = new
+                    {
+                        AccountNumber = acc.AccNo,
+                        AccountType = acc.AccType,
+                        UserId = acc.UserId,
+                        BranchId = branchId,
+                        IFSCCode = acc.IfscCode,
+                        AccountBalance = acc.Balance,
+                        AccountStatus = acc.AccountStatus,
+                        DateOfCreation = acc.DateOfJoining.ToString("yyyy-MM-dd HH:mm")
+                    }
+                };
 
-                return Ok("Account created successfully");
+                return Ok(response);
             }
             catch (Exception ex)
             {
@@ -461,19 +728,29 @@ namespace Bank.Controllers
         {
             try
             {
-                var emps = bankDbContext.Staff.Select(s => new StaffResponseDto
+                var branchId = GetBranchId();
+                if (branchId == null)
                 {
-                    EmpID = s.EmpId,
-                    EmpName = s.EmpName,
-                    EmpRole = s.EmpRole,
-                    EmpMobile = s.EmpMobile,
-                    EmpEmail = s.EmpEmail,
-                    BranchId = s.BranchId
-                }).ToList();
+                    return Unauthorized("Branch information not present in token");
+                }
+                    
+                var emps = bankDbContext.Staff
+                    .Where(s => s.SoftDelete == true && s.BranchId == branchId)
+                    .Select(s => new StaffResponseDto
+                    {
+                        EmpID = s.EmpId,
+                        EmpName = s.EmpName,
+                        EmpRole = s.EmpRole,
+                        EmpMobile = s.EmpMobile,
+                        EmpEmail = s.EmpEmail,
+                        BranchId = s.BranchId
+                    }).ToList();
 
                 if (emps.Count == 0)
-                    return NotFound("No staff found");
-
+                {
+                    return NotFound("No staff found in your branch");
+                }
+                    
                 return Ok(emps);
             }
             catch (Exception ex)
@@ -487,8 +764,13 @@ namespace Bank.Controllers
         {
             try
             {
+                if(id<100000)
+                {
+                    return BadRequest("Provide valid id");
+                }
+
                 var emp = bankDbContext.Staff
-                    .Where(s => s.EmpId == id)
+                    .Where(s => s.EmpId == id && s.SoftDelete == true)
                     .Select(s => new StaffResponseDto
                     {
                         EmpID = s.EmpId,
@@ -501,9 +783,72 @@ namespace Bank.Controllers
                     .FirstOrDefault();
 
                 if (emp == null)
+                {
                     return NotFound($"Staff with ID {id} not found");
-
+                }
+                    
                 return Ok(emp);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet("GetDeletedUsers")]
+        public IActionResult GetDUsers()
+        {
+            try
+            {
+                var branchId = GetBranchId();
+                if (branchId == null)
+                {
+                    return Unauthorized("Branch information not present in token");
+                }
+                    
+                var dusers = (from u in bankDbContext.Users
+                              join a in bankDbContext.Accounts on u.UserId equals a.UserId
+                              join b in bankDbContext.Branches on a.IfscCode equals b.IfscCode
+                              where u.SoftDelete == false && b.BranchId == branchId
+                              select u).Distinct().ToList();
+
+                if (dusers.Count == 0)
+                {
+                    return NotFound("No deleted Users in your branch");
+                }
+                return Ok(dusers);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPost("PermanantDeleteUser/{id}")]
+        public IActionResult PostDUsers(int id)
+        {
+            try
+            {
+                var branchId = GetBranchId();
+                if (branchId == null)
+                {
+                    return Unauthorized("Branch information not present in token");
+                }
+                    
+                var dusers = (from u in bankDbContext.Users
+                              join a in bankDbContext.Accounts on u.UserId equals a.UserId
+                              join b in bankDbContext.Branches on a.IfscCode equals b.IfscCode
+                              where u.UserId == id && u.SoftDelete == false && b.BranchId == branchId
+                              select u).FirstOrDefault();
+
+                if (dusers == null)
+                {
+                    return NotFound("No deleted user with the given ID in your branch");
+                }
+
+                bankDbContext.Users.Remove(dusers);
+                bankDbContext.SaveChanges();
+                return Ok("Permanently deleted the user from the branch");
             }
             catch (Exception ex)
             {

@@ -19,5 +19,7 @@ public partial class Staff
 
     public int? BranchId { get; set; } = null!;
 
+    public Boolean SoftDelete { get; set; }
+
     public virtual Branch? Branch { get; set; }
 }

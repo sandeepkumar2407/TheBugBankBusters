@@ -43,6 +43,16 @@
   },
   {
     "ContainingType": "Bank.Controllers.AdminController",
+    "Method": "GetAllStaff",
+    "RelativePath": "api/Admin/GetAllStaff",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.AdminController",
     "Method": "GetBranchById",
     "RelativePath": "api/Admin/GetBranchById/{id}",
     "HttpMethod": "GET",
@@ -55,6 +65,16 @@
         "IsRequired": true
       }
     ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.AdminController",
+    "Method": "GetDStaff",
+    "RelativePath": "api/Admin/GetDeletedStaff",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
     "ReturnTypes": []
   },
   {
@@ -91,9 +111,25 @@
   },
   {
     "ContainingType": "Bank.Controllers.AdminController",
+    "Method": "PostDStaff",
+    "RelativePath": "api/Admin/PermanantDeleteStaff/{id}",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.AdminController",
     "Method": "RemoveStaff",
     "RelativePath": "api/Admin/RemoveStaff/{id}",
-    "HttpMethod": "DELETE",
+    "HttpMethod": "PATCH",
     "IsController": true,
     "Order": 0,
     "Parameters": [
@@ -148,16 +184,110 @@
     "ReturnTypes": []
   },
   {
+    "ContainingType": "Bank.Controllers.CustomerController",
+    "Method": "GetProfile",
+    "RelativePath": "api/Customer/GetProfile",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.CustomerController",
+    "Method": "GetTransacsByAcc",
+    "RelativePath": "api/Customer/GetTransacsByAcc/{accNo}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "accNo",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.CustomerController",
+    "Method": "GetTransactionHistory",
+    "RelativePath": "api/Customer/GetTransactionHistory",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.CustomerController",
+    "Method": "GetYourAccounts",
+    "RelativePath": "api/Customer/GetYourAccounts",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.CustomerController",
+    "Method": "Transfer",
+    "RelativePath": "api/Customer/Transactions/Transfer",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "Bank.Models.CustTransacTransferDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.CustomerController",
+    "Method": "UpdateLoginPassword",
+    "RelativePath": "api/Customer/UpdateLoginPassword",
+    "HttpMethod": "PATCH",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "passDto",
+        "Type": "Bank.Models.UpdatePassDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.CustomerController",
+    "Method": "UpdateTransacPassword",
+    "RelativePath": "api/Customer/UpdateTransacPassword",
+    "HttpMethod": "PATCH",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "passDto",
+        "Type": "Bank.Models.UpdatePassDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "Bank.Controllers.LoginController",
-    "Method": "Login",
-    "RelativePath": "api/Login",
+    "Method": "CustomerLogin",
+    "RelativePath": "api/Login/Customer",
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
     "Parameters": [
       {
         "Name": "login",
-        "Type": "Bank.Models.LoginDto",
+        "Type": "Bank.Models.LoginCusDto",
         "IsRequired": true
       }
     ],
@@ -171,6 +301,22 @@
     "IsController": true,
     "Order": 0,
     "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.LoginController",
+    "Method": "StaffLogin",
+    "RelativePath": "api/Login/Staff",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "login",
+        "Type": "Bank.Models.LoginDto",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -225,7 +371,7 @@
     "ContainingType": "Bank.Controllers.ManagerController",
     "Method": "DeleteUser",
     "RelativePath": "api/Manager/DeleteUser/{id}",
-    "HttpMethod": "DELETE",
+    "HttpMethod": "PUT",
     "IsController": true,
     "Order": 0,
     "Parameters": [
@@ -249,9 +395,35 @@
   },
   {
     "ContainingType": "Bank.Controllers.ManagerController",
+    "Method": "GetDUsers",
+    "RelativePath": "api/Manager/GetDeletedUsers",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.ManagerController",
     "Method": "GetStaffByID",
     "RelativePath": "api/Manager/GetStaffByID/{id}",
     "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.ManagerController",
+    "Method": "PostDUsers",
+    "RelativePath": "api/Manager/PermanantDeleteUser/{id}",
+    "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
     "Parameters": [
@@ -345,6 +517,22 @@
   },
   {
     "ContainingType": "Bank.Controllers.ManagerController",
+    "Method": "UpdateLoginPassword",
+    "RelativePath": "api/Manager/UpdateLoginPassword",
+    "HttpMethod": "PATCH",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "passDto",
+        "Type": "Bank.Models.UpdatePassDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.ManagerController",
     "Method": "UpdateUser",
     "RelativePath": "api/Manager/UpdateUser/{id}",
     "HttpMethod": "PUT",
@@ -385,6 +573,22 @@
       {
         "Name": "id",
         "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.RegisterController",
+    "Method": "RegisterUser",
+    "RelativePath": "api/Register/RegisterUser",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "newUser",
+        "Type": "Bank.Models.UserCreationDto",
         "IsRequired": true
       }
     ],
@@ -536,6 +740,22 @@
   },
   {
     "ContainingType": "Bank.Controllers.StaffController",
+    "Method": "UpdateLoginPassword",
+    "RelativePath": "api/Staff/UpdateLoginPassword",
+    "HttpMethod": "PATCH",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "passDto",
+        "Type": "Bank.Models.UpdatePassDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.StaffController",
     "Method": "UpdateUser",
     "RelativePath": "api/Staff/UpdateUser/{id}",
     "HttpMethod": "PUT",
@@ -580,26 +800,5 @@
       }
     ],
     "ReturnTypes": []
-  },
-  {
-    "ContainingType": "Bank.Controllers.WeatherForecastController",
-    "Method": "Get",
-    "RelativePath": "WeatherForecast",
-    "HttpMethod": "GET",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [],
-    "ReturnTypes": [
-      {
-        "Type": "System.Collections.Generic.IEnumerable\u00601[[Bank.WeatherForecast, Bank, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
-        "MediaTypes": [
-          "text/plain",
-          "application/json",
-          "text/json"
-        ],
-        "StatusCode": 200
-      }
-    ],
-    "EndpointName": "GetWeatherForecast"
   }
 ]
