@@ -1,4 +1,5 @@
 ﻿using Bank.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -6,6 +7,7 @@ namespace Bank.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    //[Authorize(Roles = "Branchadmin")]
     public class BankController : ControllerBase
     {
         readonly BankDbContext bnk;
@@ -40,12 +42,21 @@ namespace Bank.Controllers
         {
             try
             {
-                var data = bnk.Branches.ToList();
-                if (data.Count == 0)
+                var branchDtos = bnk.Branches
+                .Select(b => new BranchDtoGet
+                {
+                    BranchId = b.BranchId,
+                    BranchName = b.BranchName,
+                    Baddress = b.Baddress,
+                    IfscCode = b.IfscCode
+                })
+                .ToList();
+
+                if (!branchDtos.Any())
                 {
                     return NotFound("No Branches Found");
                 }
-                return Ok(data);
+                return Ok(branchDtos);
             }
             catch (Exception ex)
             {
