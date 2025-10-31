@@ -353,5 +353,115 @@ namespace Bank.Controllers
                 return BadRequest($"Error: {ex.Message}");
             }
         }
+
+        [HttpPost("ScheduleTransaction")]
+        public IActionResult ScheduleTransaction([FromBody] ScheduleTransactionDto dto)
+        {
+            try
+            {
+                if (dto == null)
+                    return BadRequest(new { message = "Missing transaction data." });
+
+                if (dto.Amount <= 0)
+                    return BadRequest(new { message = "Amount must be greater than 0." });
+
+                var now = DateTime.Now;
+                if (dto.ScheduledTime < now || dto.ScheduledTime > now.AddHours(24))
+                    return BadRequest(new { message = "Scheduled time must be within 24 hours from now." });
+
+                //var fromAccount = bankDbContext.Accounts.Find(dto.FromAccountId);
+                var fromAccount = bankDbContext.Accounts
+                    .Include(a => a.User)
+                    .FirstOrDefault(a => a.AccNo == dto.FromAccountId);
+                //var toAccount = bankDbContext.Accounts.Find(dto.ToAccountId);
+                var toAccount = bankDbContext.Accounts
+                    .FirstOrDefault(a => a.AccNo == dto.ToAccountId);
+
+                if (fromAccount == null || toAccount == null)
+                    return BadRequest(new { message = "Invalid account(s)." });
+                if(dto.TransactionPass == null)
+                {
+                    return BadRequest(new {message = "Missing transaction password"});
+                }
+                if(dto.TransactionPass != fromAccount.User.TransactionPassword)
+                {
+                    return Unauthorized(new { message =  "Transation password is incorrect" });
+                }
+                var scheduled = new ScheduledTransaction
+                {
+                    fromAcc = dto.FromAccountId,
+                    toAcc = dto.ToAccountId,
+                    Amount = dto.Amount,
+                    ScheduleTime = dto.ScheduledTime
+                };
+
+                bankDbContext.ScheduledTransactions.Add(scheduled);
+                bankDbContext.SaveChanges();
+
+                return Ok(new { message = "Transaction scheduled successfully." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Server error", error = ex.Message });
+            }
+        }
+
+        [HttpGet("ScheduledTransactions")]
+        public IActionResult GetScheduledTransactions()
+        {
+            var user = GetUserId();
+            var list = bankDbContext.ScheduledTransactions
+                .OrderByDescending(t => t.CreatedAt)
+                .ToList();
+
+            return Ok(list);
+        }
+
+        [HttpPatch("CancelScheduledTransaction/{id}")]
+        public IActionResult CancelScheduledTransaction(int id, [FromBody] CancelTransactionDto dto)
+        {
+            try
+            {
+                if (dto == null || string.IsNullOrEmpty(dto.TransactionPass))
+                    return BadRequest(new { message = "Transaction password is required." });
+
+                var scheduledTx = bankDbContext.ScheduledTransactions.Find(id);
+
+                if (scheduledTx == null)
+                    return NotFound(new { message = "Scheduled transaction not found." });
+
+                // Check if already executed or failed
+                if (scheduledTx.TransacStatus == "Executed" || scheduledTx.TransacStatus == "Failed")
+                    return BadRequest(new { message = "This transaction cannot be cancelled as it is already processed." });
+
+                // Check if time has passed
+                if (scheduledTx.ScheduleTime <= DateTime.Now)
+                    return BadRequest(new { message = "Cannot cancel a transaction whose scheduled time has already passed." });
+
+                // Verify transaction password
+                var fromAccount = bankDbContext.Accounts
+                    .Include(a => a.User)
+                    .FirstOrDefault(a => a.AccNo == scheduledTx.fromAcc);
+
+                if (fromAccount == null)
+                    return BadRequest(new { message = "Linked account not found." });
+
+                if (dto.TransactionPass != fromAccount.User.TransactionPassword)
+                    return Unauthorized(new { message = "Invalid transaction password." });
+
+                // Cancel transaction
+                scheduledTx.TransacStatus = "Cancelled";
+                bankDbContext.ScheduledTransactions.Update(scheduledTx);
+                bankDbContext.SaveChanges();
+
+                return Ok(new { message = "Scheduled transaction cancelled successfully." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Server error", error = ex.Message });
+            }
+        }
+
+
     }
 }

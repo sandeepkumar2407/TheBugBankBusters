@@ -398,15 +398,15 @@ namespace Bank.Controllers
                 var account = bankDbContext.Accounts.Find(creditDebitDto.AccNo);
                 if (account == null)
                 {
-                    SaveTransaction(creditDebitDto.AccNo, null, creditDebitDto.Amount, creditDebitDto.TransacType, "Failed", "Invalid account");
-                    bankDbContext.SaveChanges();
+                    //SaveTransaction(creditDebitDto.AccNo, null, creditDebitDto.Amount, creditDebitDto.TransacType, "Failed", "Invalid account");
+                    //bankDbContext.SaveChanges();
                     return NotFound("Account not found");
                 }
 
                 if (creditDebitDto.Amount <= 0)
                 {
-                    SaveTransaction(creditDebitDto.AccNo, null, creditDebitDto.Amount, creditDebitDto.TransacType, "Failed", "Invalid amount");
-                    bankDbContext.SaveChanges();
+                    //SaveTransaction(creditDebitDto.AccNo, null, creditDebitDto.Amount, creditDebitDto.TransacType, "Failed", "Invalid amount");
+                    //bankDbContext.SaveChanges();
                     return BadRequest("Amount must be greater than zero");
                 }
 
@@ -431,12 +431,12 @@ namespace Bank.Controllers
                 }
                 else if (creditDebitDto.TransacType.Equals("Credit", StringComparison.OrdinalIgnoreCase))
                 {
-                    // For Credit: account must NOT be Blocked
-                    if (string.Equals(account.AccountStatus, "Blocked", StringComparison.OrdinalIgnoreCase))
+                    // For Credit: account must NOT be Closed
+                    if (string.Equals(account.AccountStatus, "Closed", StringComparison.OrdinalIgnoreCase))
                     {
-                        SaveTransaction(creditDebitDto.AccNo, null, creditDebitDto.Amount, "Credit", "Failed", "Account is Blocked - cannot credit");
+                        SaveTransaction(creditDebitDto.AccNo, null, creditDebitDto.Amount, "Credit", "Failed", "Account is Closed - cannot credit");
                         bankDbContext.SaveChanges();
-                        return BadRequest("Cannot credit a Blocked account");
+                        return BadRequest("Cannot credit to a Closed account");
                     }
 
                     account.Balance += creditDebitDto.Amount;
@@ -499,15 +499,15 @@ namespace Bank.Controllers
 
                 if (fromAccount == null || toAccount == null)
                 {
-                    SaveTransaction(transferDto.FromAcc, transferDto.ToAcc, transferDto.Amount, "Transfer", "Failed", "Invalid account(s)");
-                    bankDbContext.SaveChanges();
+                    //SaveTransaction(transferDto.FromAcc, transferDto.ToAcc, transferDto.Amount, "Transfer", "Failed", "Invalid account(s)");
+                    //bankDbContext.SaveChanges();
                     return NotFound("Invalid account(s)");
                 }
 
                 if (transferDto.Amount <= 0)
                 {
-                    SaveTransaction(transferDto.FromAcc, transferDto.ToAcc, transferDto.Amount, "Transfer", "Failed", "Invalid amount");
-                    bankDbContext.SaveChanges();
+                    //SaveTransaction(transferDto.FromAcc, transferDto.ToAcc, transferDto.Amount, "Transfer", "Failed", "Invalid amount");
+                    //bankDbContext.SaveChanges();
                     return BadRequest("Amount must be greater than zero");
                 }
 
@@ -526,12 +526,12 @@ namespace Bank.Controllers
                     return BadRequest("From account must be Active");
                 }
 
-                // ToAcc must NOT be Blocked
-                if (string.Equals(toAccount.AccountStatus, "Blocked", StringComparison.OrdinalIgnoreCase))
+                // ToAcc must NOT be Closed
+                if (string.Equals(toAccount.AccountStatus, "Closed", StringComparison.OrdinalIgnoreCase))
                 {
-                    SaveTransaction(transferDto.FromAcc, transferDto.ToAcc, transferDto.Amount, "Transfer", "Failed", "To account Blocked");
+                    SaveTransaction(transferDto.FromAcc, transferDto.ToAcc, transferDto.Amount, "Transfer", "Failed", "Receiver account Blocked");
                     bankDbContext.SaveChanges();
-                    return BadRequest("To account is Blocked and cannot receive transfers");
+                    return BadRequest("Receiver account is Closed and cannot receive transfers");
                 }
 
                 if (fromAccount.Balance < transferDto.Amount)
@@ -580,33 +580,33 @@ namespace Bank.Controllers
             }
         }
 
-        [HttpDelete("Transactions/{id}")]
-        public IActionResult DeleteTransaction(long id)
-        {
-            try
-            {
-                var transaction = bankDbContext.Transactions.Find(id);
+        //[HttpDelete("Transactions/{id}")]
+        //public IActionResult DeleteTransaction(long id)
+        //{
+        //    try
+        //    {
+        //        var transaction = bankDbContext.Transactions.Find(id);
 
-                if (transaction == null)
-                {
-                    return NotFound($"Transaction {id} not found");
-                }
+        //        if (transaction == null)
+        //        {
+        //            return NotFound($"Transaction {id} not found");
+        //        }
                     
-                if (!transaction.TransacStatus.Equals("Failed", StringComparison.OrdinalIgnoreCase))
-                {
-                    return BadRequest("Only failed transactions can be deleted");
-                }
+        //        if (!transaction.TransacStatus.Equals("Failed", StringComparison.OrdinalIgnoreCase))
+        //        {
+        //            return BadRequest("Only failed transactions can be deleted");
+        //        }
                     
-                bankDbContext.Transactions.Remove(transaction);
-                bankDbContext.SaveChanges();
+        //        bankDbContext.Transactions.Remove(transaction);
+        //        bankDbContext.SaveChanges();
 
-                return Ok("Failed transaction deleted successfully");
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
+        //        return Ok("Failed transaction deleted successfully");
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return BadRequest(ex.Message);
+        //    }
+        //}
 
         //////////ACCOUNTS PART//////
 
@@ -651,6 +651,22 @@ namespace Bank.Controllers
             catch (Exception ex)
             {
                 return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet("AccountsByBranch")]
+        public IActionResult AccountsByBranch()
+        {
+            try
+            {
+                var branchId = GetBranchId();
+                var ifsc = bankDbContext.Branches.Where(b => b.BranchId == branchId).Select(b => b.IfscCode).FirstOrDefault();
+                var account = bankDbContext.Accounts.Where(i => i.IfscCode == ifsc).ToList();
+                return Ok(account);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Error getting accounts" });
             }
         }
 

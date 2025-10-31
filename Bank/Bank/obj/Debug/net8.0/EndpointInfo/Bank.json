@@ -280,7 +280,7 @@
       }
     },
     "/api/Admin/PermanantDeleteStaff/{id}": {
-      "post": {
+      "delete": {
         "tags": [
           "Admin"
         ],
@@ -443,6 +443,91 @@
             "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/CustTransacTransferDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Customer/ScheduleTransaction": {
+      "post": {
+        "tags": [
+          "Customer"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleTransactionDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleTransactionDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleTransactionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Customer/ScheduledTransactions": {
+      "get": {
+        "tags": [
+          "Customer"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Customer/CancelScheduledTransaction/{id}": {
+      "patch": {
+        "tags": [
+          "Customer"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelTransactionDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelTransactionDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelTransactionDto"
               }
             }
           }
@@ -733,27 +818,6 @@
             "description": "OK"
           }
         }
-      },
-      "delete": {
-        "tags": [
-          "Manager"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
       }
     },
     "/api/Manager/Transactions/CreditOrDebit": {
@@ -833,6 +897,18 @@
               "format": "int32"
             }
           }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Manager/AccountsByBranch": {
+      "get": {
+        "tags": [
+          "Manager"
         ],
         "responses": {
           "200": {
@@ -1178,27 +1254,6 @@
             "description": "OK"
           }
         }
-      },
-      "delete": {
-        "tags": [
-          "Staff"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
       }
     },
     "/api/Staff/Transactions/CreditOrDebit": {
@@ -1278,6 +1333,18 @@
               "format": "int32"
             }
           }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Staff/AccountsByBranch": {
+      "get": {
+        "tags": [
+          "Staff"
         ],
         "responses": {
           "200": {
@@ -1370,6 +1437,16 @@
         },
         "additionalProperties": false
       },
+      "CancelTransactionDto": {
+        "type": "object",
+        "properties": {
+          "transactionPass": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "CustTransacTransferDto": {
         "type": "object",
         "properties": {
@@ -1420,6 +1497,32 @@
             "nullable": true
           },
           "password": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ScheduleTransactionDto": {
+        "type": "object",
+        "properties": {
+          "fromAccountId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "toAccountId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "scheduledTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "transactionPass": {
             "type": "string",
             "nullable": true
           }

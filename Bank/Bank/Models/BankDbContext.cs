@@ -24,6 +24,7 @@ public partial class BankDbContext : DbContext
     public virtual DbSet<Transaction> Transactions { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
+    public virtual DbSet<ScheduledTransaction> ScheduledTransactions { get; set; }
 
     //protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     //    => optionsBuilder.UseSqlServer("Name=ConnectionStrings:myconn");
@@ -169,6 +170,39 @@ public partial class BankDbContext : DbContext
                 .IsUnicode(false)
                 .HasColumnName("UName");
         });
+        modelBuilder.Entity<ScheduledTransaction>(entity =>
+        {
+            entity.HasKey(e => e.STId).HasName("PK__ScheduledTransaction__STId");
+
+            entity.ToTable("ScheduledTransaction");
+
+            entity.Property(e => e.Amount)
+                .HasColumnType("money");
+
+            entity.Property(e => e.ScheduleTime)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(sysdatetime())");
+
+            entity.Property(e => e.TransacStatus)
+                .HasMaxLength(10)
+                .IsUnicode(false)
+                .HasDefaultValue("Pending");
+
+            entity.HasOne<Account>()
+                .WithMany()
+                .HasForeignKey(e => e.fromAcc)
+                .OnDelete(DeleteBehavior.NoAction)
+                .HasConstraintName("FK_ScheduledTransaction_FromAcc");
+
+            entity.HasOne<Account>()
+                .WithMany()
+                .HasForeignKey(e => e.toAcc)
+                .OnDelete(DeleteBehavior.NoAction)
+                .HasConstraintName("FK_ScheduledTransaction_ToAcc");
+        });
+
 
         OnModelCreatingPartial(modelBuilder);
     }

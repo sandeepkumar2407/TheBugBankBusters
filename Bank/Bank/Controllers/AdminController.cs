@@ -438,7 +438,7 @@ namespace Bank.Controllers
             }
         }
 
-        [HttpPost("PermanantDeleteStaff/{id}")]
+        [HttpDelete("PermanantDeleteStaff/{id}")]
         public IActionResult PostDStaff(int id)
         {
             try

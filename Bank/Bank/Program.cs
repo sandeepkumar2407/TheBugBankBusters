@@ -15,6 +15,7 @@ namespace Bank
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            builder.Services.AddHostedService<ScheduledTransactionService>();
 
             builder.Services.AddCors(options =>
             {
@@ -33,6 +34,7 @@ namespace Bank
                 options.UseSqlServer(builder.Configuration.GetConnectionString("myconn"))
             );
             builder.Services.AddScoped<IJwtServices, JwtService>();
+            
             builder.Services.AddDistributedMemoryCache();
 
             builder.Services.AddEndpointsApiExplorer();
