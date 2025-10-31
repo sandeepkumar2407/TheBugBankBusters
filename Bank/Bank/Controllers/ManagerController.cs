@@ -252,7 +252,7 @@ namespace Bank.Controllers
             }
         }
 
-        [HttpPut("DeleteUser/{id}")]
+        [HttpPatch("DeleteUser/{id}")]
         public IActionResult DeleteUser(int id)
         {
             try
@@ -287,7 +287,7 @@ namespace Bank.Controllers
                         acc.Balance = 0;
                     }
 
-                    acc.AccountStatus = "Block";
+                    acc.AccountStatus = "Closed";
                 }
 
                 bankDbContext.SaveChanges();
@@ -840,7 +840,7 @@ namespace Bank.Controllers
             }
         }
 
-        [HttpPost("PermanantDeleteUser/{id}")]
+        [HttpDelete("PermanantDeleteUser/{id}")]
         public IActionResult PostDUsers(int id)
         {
             try

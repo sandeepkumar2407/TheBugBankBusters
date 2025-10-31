@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\nagar\\Desktop\\finalbackend\\Bank\\Bank\\Bank.csproj": {}
+    "C:\\Users\\M.SandeepKumar Reddy\\source\\repos\\sandeepkumar2407\\TheBugBankBusters\\Bank\\Bank\\Bank.csproj": {}
   },
   "projects": {
-    "C:\\Users\\nagar\\Desktop\\finalbackend\\Bank\\Bank\\Bank.csproj": {
+    "C:\\Users\\M.SandeepKumar Reddy\\source\\repos\\sandeepkumar2407\\TheBugBankBusters\\Bank\\Bank\\Bank.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\nagar\\Desktop\\finalbackend\\Bank\\Bank\\Bank.csproj",
+        "projectUniqueName": "C:\\Users\\M.SandeepKumar Reddy\\source\\repos\\sandeepkumar2407\\TheBugBankBusters\\Bank\\Bank\\Bank.csproj",
         "projectName": "Bank",
-        "projectPath": "C:\\Users\\nagar\\Desktop\\finalbackend\\Bank\\Bank\\Bank.csproj",
-        "packagesPath": "C:\\Users\\nagar\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\nagar\\Desktop\\finalbackend\\Bank\\Bank\\obj\\",
+        "projectPath": "C:\\Users\\M.SandeepKumar Reddy\\source\\repos\\sandeepkumar2407\\TheBugBankBusters\\Bank\\Bank\\Bank.csproj",
+        "packagesPath": "C:\\Users\\M.SandeepKumar Reddy\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\M.SandeepKumar Reddy\\source\\repos\\sandeepkumar2407\\TheBugBankBusters\\Bank\\Bank\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\nagar\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\M.SandeepKumar Reddy\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
