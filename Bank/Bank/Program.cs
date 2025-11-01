@@ -34,7 +34,7 @@ namespace Bank
                 options.UseSqlServer(builder.Configuration.GetConnectionString("myconn"))
             );
             builder.Services.AddScoped<IJwtServices, JwtService>();
-            
+            builder.Services.AddScoped<PasswordService>();
             builder.Services.AddDistributedMemoryCache();
 
             builder.Services.AddEndpointsApiExplorer();

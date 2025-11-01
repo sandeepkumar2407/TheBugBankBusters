@@ -1,6 +1,7 @@
 ﻿using Bank.Models;
-using Microsoft.AspNetCore.Http;
+using Bank.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Bank.Controllers
 {
@@ -8,54 +9,62 @@ namespace Bank.Controllers
     [ApiController]
     public class RegisterController : ControllerBase
     {
-        readonly BankDbContext bankDbContext;
+        private readonly BankDbContext bankDbContext;
+        private readonly PasswordService passwordService;
 
-        public RegisterController(BankDbContext _bankDbContext)
+        public RegisterController(BankDbContext _bankDbContext,PasswordService _passwordService)
         {
-            this.bankDbContext = _bankDbContext;
+            bankDbContext = _bankDbContext;
+            passwordService = _passwordService;
         }
 
-        private static string GenerateRandomPassword(int length)
-        {
-            const string validChars = "ABCDEFGHJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$&";
-            Random random = new Random();
-            return new string(Enumerable.Repeat(validChars, length)
-                                        .Select(s => s[random.Next(s.Length)])
-                                        .ToArray());
-        }
+        //private static string GenerateRandomPassword(int length)
+        //{
+        //    const string validChars = "ABCDEFGHJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$&";
+        //    Random random = new Random();
+        //    return new string(Enumerable.Repeat(validChars, length)
+        //                                .Select(s => s[random.Next(s.Length)])
+        //                                .ToArray());
+        //}
+
         [HttpPost("RegisterUser")]
-        public IActionResult RegisterUser(UserCreationDto newUser)
+        public async Task<IActionResult> RegisterUser([FromBody] UserCreationDto newUser)
         {
             try
             {
                 if (newUser == null)
                 {
-                    return BadRequest("Invalid user data");
+                    return BadRequest(new { message = "Invalid user data" });
                 }
 
-                if (!string.IsNullOrWhiteSpace(newUser.Mobile) && bankDbContext.Users.Any(u => u.Mobile == newUser.Mobile && u.SoftDelete == true))
+                if (!string.IsNullOrWhiteSpace(newUser.Mobile) &&
+                    await bankDbContext.Users.AnyAsync(u => u.Mobile == newUser.Mobile && u.SoftDelete == true))
                 {
-                    return BadRequest("Mobile number already exists");
+                    return BadRequest(new { message = "Mobile number already exists" });
                 }
 
-                if (!string.IsNullOrWhiteSpace(newUser.Email) && bankDbContext.Users.Any(u => u.Email == newUser.Email && u.SoftDelete == true))
+                if (!string.IsNullOrWhiteSpace(newUser.Email) &&
+                    await bankDbContext.Users.AnyAsync(u => u.Email == newUser.Email && u.SoftDelete == true))
                 {
-                    return BadRequest("Email already exists");
+                    return BadRequest(new { message = "Email already exists" });
                 }
 
-                if (!string.IsNullOrWhiteSpace(newUser.PANCard) && bankDbContext.Users.Any(u => u.PANCard == newUser.PANCard && u.SoftDelete == true))
+                if (!string.IsNullOrWhiteSpace(newUser.PANCard) &&
+                    await bankDbContext.Users.AnyAsync(u => u.PANCard == newUser.PANCard && u.SoftDelete == true))
                 {
-                    return BadRequest("PAN card already exists");
+                    return BadRequest(new { message = "PAN card already exists" });
                 }
 
-                if (!string.IsNullOrWhiteSpace(newUser.AadharCard) && bankDbContext.Users.Any(u => u.AadharCard == newUser.AadharCard && u.SoftDelete == true))
+                if (!string.IsNullOrWhiteSpace(newUser.AadharCard) &&
+                    await bankDbContext.Users.AnyAsync(u => u.AadharCard == newUser.AadharCard && u.SoftDelete == true))
                 {
-                    return BadRequest("Aadhar card already exists");
+                    return BadRequest(new { message = "Aadhar card already exists" });
                 }
 
-                string generatedPassword = GenerateRandomPassword(12);
+                string generatedPassword = $"{newUser.UserName}@123";
+                string hashedPassword = passwordService.HashPassword(generatedPassword);
 
-                User u = new User()
+                var user = new User
                 {
                     Uname = newUser.UserName,
                     DoB = newUser.DoB,
@@ -65,32 +74,34 @@ namespace Bank.Controllers
                     Email = newUser.Email,
                     PANCard = newUser.PANCard,
                     AadharCard = newUser.AadharCard,
-                    LoginPassword = generatedPassword,
-                    TransactionPassword = generatedPassword,
+                    LoginPassword = hashedPassword,
+                    TransactionPassword = hashedPassword,
                     SoftDelete = true,
                     Role = "Customer"
                 };
-                bankDbContext.Users.Add(u);
-                bankDbContext.SaveChanges();
+
+                await bankDbContext.Users.AddAsync(user);
+                await bankDbContext.SaveChangesAsync();
 
                 var response = new
                 {
-                    message = "You have successfully registered with out bank! Here are your details, Please change your passwords.",
+                    message = "You have successfully registered with our bank! Here are your details. Please change your passwords.",
                     userDetails = new
                     {
-                        UserId = u.UserId,
-                        UserName = u.Uname,
-                        Email = u.Email,
-                        Mobile = u.Mobile,
-                        LoginPassword = u.LoginPassword,
-                        TransactionPassword = u.TransactionPassword
+                        UserId = user.UserId,
+                        UserName = user.Uname,
+                        Email = user.Email,
+                        Mobile = user.Mobile,
+                        LoginPassword = generatedPassword,
+                        TransactionPassword = generatedPassword
                     }
                 };
+
                 return Ok(response);
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { message = ex.Message });
             }
         }
     }

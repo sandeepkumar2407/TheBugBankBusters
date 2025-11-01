@@ -302,6 +302,30 @@
         }
       }
     },
+    "/api/Admin/ApplyFDInterest": {
+      "put": {
+        "tags": [
+          "Admin"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Admin/ApplySavingsInterest": {
+      "put": {
+        "tags": [
+          "Admin"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/Customer/GetProfile": {
       "get": {
         "tags": [
@@ -753,7 +777,7 @@
       }
     },
     "/api/Manager/DeleteUser/{id}": {
-      "put": {
+      "patch": {
         "tags": [
           "Manager"
         ],
@@ -948,6 +972,48 @@
         }
       }
     },
+    "/api/Manager/UpdateAccountStatus/{id}": {
+      "patch": {
+        "tags": [
+          "Manager"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountUpdateDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountUpdateDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountUpdateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/Manager/GetAllStaff": {
       "get": {
         "tags": [
@@ -996,7 +1062,7 @@
       }
     },
     "/api/Manager/PermanantDeleteUser/{id}": {
-      "post": {
+      "delete": {
         "tags": [
           "Manager"
         ],
@@ -1189,7 +1255,7 @@
       }
     },
     "/api/Staff/DeleteUser/{id}": {
-      "delete": {
+      "patch": {
         "tags": [
           "Staff"
         ],
@@ -1383,6 +1449,48 @@
           }
         }
       }
+    },
+    "/api/Staff/UpdateAccountStatus/{id}": {
+      "patch": {
+        "tags": [
+          "Staff"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountUpdateDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountUpdateDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountUpdateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1401,6 +1509,16 @@
           "balance": {
             "type": "number",
             "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AccountUpdateDto": {
+        "type": "object",
+        "properties": {
+          "accountStatus": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -1427,10 +1545,6 @@
             "nullable": true
           },
           "baddress": {
-            "type": "string",
-            "nullable": true
-          },
-          "ifscCode": {
             "type": "string",
             "nullable": true
           }

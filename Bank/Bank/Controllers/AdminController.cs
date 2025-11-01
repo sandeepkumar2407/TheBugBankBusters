@@ -1,6 +1,8 @@
 ﻿using Bank.Models;
+using Bank.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Linq;
 
 namespace Bank.Controllers
@@ -11,10 +13,12 @@ namespace Bank.Controllers
     public class AdminController : ControllerBase
     {
         readonly BankDbContext bankDbContext;
+        readonly PasswordService passwordService;
 
-        public AdminController(BankDbContext _bankDbContext)
+        public AdminController(BankDbContext _bankDbContext,PasswordService _passwordService)
         {
             this.bankDbContext = _bankDbContext;
+            this.passwordService = _passwordService;
         }
 
         ////////// BRANCH PART //////////
@@ -36,57 +40,56 @@ namespace Bank.Controllers
         }
 
         [HttpPost("BranchRegister")]
-        public IActionResult BranchRegister(BranchDto b)
+        public async Task<IActionResult> BranchRegister([FromBody] BranchDto b)
         {
             try
             {
                 if (b == null)
-                {
-                    return BadRequest("Enter correct details");
-                }
+                    return BadRequest(new { message = "Enter correct branch details" });
 
                 string ifscCode = GenerateUniqueIFSC();
 
-                Branch br = new Branch()
+                var branch = new Branch
                 {
                     BranchName = b.BranchName,
                     Baddress = b.Baddress,
                     IfscCode = ifscCode
                 };
-                bankDbContext.Branches.Add(br);
-                bankDbContext.SaveChanges();
 
-                var response = new
+                await bankDbContext.Branches.AddAsync(branch);
+                await bankDbContext.SaveChangesAsync();
+
+                return Ok(new
                 {
-                    message = "Branch Registered Successfully",
+                    message = "Branch registered successfully",
                     branchDetails = new
                     {
-                        BranchId = br.BranchId,
-                        BranchName = br.BranchName,
-                        BranchAddress = br.Baddress,
+                        BranchId = branch.BranchId,
+                        BranchName = branch.BranchName,
+                        BranchAddress = branch.Baddress,
                         IFSCcode = ifscCode
                     }
-                };
-                return Ok(response);
+                });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { message = ex.Message });
             }
         }
 
+
         [HttpGet("GetBranchById/{id}")]
-        public IActionResult GetBranchById(int id)
+        public async Task<IActionResult> GetBranchById(int id)
         {
             try
             {
-                var branch = bankDbContext.Branches.FirstOrDefault(b => b.BranchId == id);
+                var branch = await bankDbContext.Branches
+                    .FirstOrDefaultAsync(b => b.BranchId == id);
 
                 if (branch == null)
-                {
-                    return NotFound($"No Branch found with ID: {id}");
-                }
-                var br = new BranchResponseDto()
+                    return NotFound(new { message = $"No branch found with ID {id}" });
+
+                var response = new BranchResponseDto
                 {
                     BranchId = branch.BranchId,
                     BranchName = branch.BranchName,
@@ -94,131 +97,123 @@ namespace Bank.Controllers
                     IfscCode = branch.IfscCode
                 };
 
-                return Ok(br);
+                return Ok(new
+                {
+                    message = "Branch details retrieved successfully",
+                    branch = response
+                });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { message = ex.Message });
             }
         }
 
+
         [HttpGet("GetAllBranches")]
-        public IActionResult GetAllBranches()
+        public async Task<IActionResult> GetAllBranches()
         {
             try
             {
-                var data = bankDbContext.Branches.ToList();
-                if (data.Count == 0)
+                var branches = await bankDbContext.Branches
+                    .Select(b => new BranchResponseDto
+                    {
+                        BranchId = b.BranchId,
+                        BranchName = b.BranchName,
+                        Baddress = b.Baddress,
+                        IfscCode = b.IfscCode
+                    })
+                    .ToListAsync();
+
+                if (branches.Count == 0)
+                    return NotFound(new { message = "No branches found" });
+
+                return Ok(new
                 {
-                    return NotFound("No Branches Found");
-                }
-                return Ok(data);
+                    message = "All branches retrieved successfully",
+                    branches = branches
+                });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { message = ex.Message });
             }
         }
 
         [HttpPut("UpdateBranch/{id}")]
-        public IActionResult UpdateBranch([FromRoute] int id, [FromBody] BranchUpdateDto br)
+        public async Task<IActionResult> UpdateBranch([FromRoute] int id, [FromBody] BranchUpdateDto br)
         {
             try
             {
                 if (id <= 0)
-                {
-                    return NotFound("Provide valid id");
-                }
-                   
-                var res = bankDbContext.Branches.Find(id);
+                    return BadRequest(new { message = "Provide a valid branch ID" });
 
-                if (res == null)
-                {
-                    return BadRequest("No data found");
-                }
-                    
-                if (!string.IsNullOrWhiteSpace(br.IfscCode))
-                {
-                    bool ifscExists = bankDbContext.Branches.Any(b => b.IfscCode == br.IfscCode && b.BranchId != id);
-                    if (ifscExists)
-                    {
-                        return BadRequest("IFSC code already exists. Please use a unique one.");
-                    }
-                    res.IfscCode = br.IfscCode;
-                }
+                var branch = await bankDbContext.Branches.FindAsync(id);
+
+                if (branch == null)
+                    return NotFound(new { message = "Branch not found" });
 
                 if (!string.IsNullOrWhiteSpace(br.BranchName))
-                {
-                    res.BranchName = br.BranchName;
-                }
-                   
+                    branch.BranchName = br.BranchName;
+
                 if (!string.IsNullOrWhiteSpace(br.Baddress))
-                {
-                    res.Baddress = br.Baddress;
-                }
-                    
-                bankDbContext.SaveChanges();
-                return Ok("Branch Data Updated Successfully");
+                    branch.Baddress = br.Baddress;
+
+                await bankDbContext.SaveChangesAsync();
+
+                return Ok(new { message = "Branch data updated successfully" });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { message = ex.Message });
             }
         }
 
+
         ////////// STAFF PART //////////
 
-        private static string GenerateRandomPassword(int length)
-        {
-            const string validChars = "ABCDEFGHJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$&";
-            Random random = new Random();
-            return new string(Enumerable.Repeat(validChars, length)
-                                        .Select(s => s[random.Next(s.Length)])
-                                        .ToArray());
-        }
+        //private static string GenerateRandomPassword(int length)
+        //{
+        //    const string validChars = "ABCDEFGHJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$&";
+        //    Random random = new Random();
+        //    return new string(Enumerable.Repeat(validChars, length)
+        //                                .Select(s => s[random.Next(s.Length)])
+        //                                .ToArray());
+        //}
 
         [HttpPost("AddStaff")]
-        public IActionResult AddStaff(StaffDto staffDto)
+        public async Task<IActionResult> AddStaff([FromBody] StaffDto staffDto)
         {
             try
             {
                 if (staffDto == null)
-                {
-                    return BadRequest("Data is missing");
-                }
+                    return BadRequest(new { message = "Data is missing" });
 
-                var checkBranch = bankDbContext.Branches.Find(staffDto.BranchId);
-
+                var checkBranch = await bankDbContext.Branches.FindAsync(staffDto.BranchId);
                 if (checkBranch == null)
-                {
-                    return BadRequest("Branch is not existing");
-                }
+                    return BadRequest(new { message = "Branch is not existing" });
 
-                if (bankDbContext.Staff.Any(s => s.EmpEmail == staffDto.EmpEmail))
-                {
-                    return BadRequest("Email already exists. Please use a different email.");
-                }
+                if (await bankDbContext.Staff.AnyAsync(s => s.EmpEmail == staffDto.EmpEmail))
+                    return BadRequest(new { message = "Email already exists. Please use a different email." });
 
-                if (bankDbContext.Staff.Any(s => s.EmpMobile == staffDto.EmpMobile))
-                {
-                    return BadRequest("Mobile number already exists. Please use a different number.");
-                }
+                if (await bankDbContext.Staff.AnyAsync(s => s.EmpMobile == staffDto.EmpMobile))
+                    return BadRequest(new { message = "Mobile number already exists. Please use a different number." });
 
-                string generatedPassword = GenerateRandomPassword(12);
-
-                Staff st = new Staff()
+                string generatedPassword = $"{staffDto.EmpName}@123";
+                string hashedPassword = passwordService.HashPassword(generatedPassword);
+                var st = new Staff
                 {
                     EmpName = staffDto.EmpName,
                     EmpEmail = staffDto.EmpEmail,
                     EmpMobile = staffDto.EmpMobile,
                     EmpRole = staffDto.EmpRole,
-                    EmpPass = generatedPassword,
+                    EmpPass = hashedPassword,
                     BranchId = staffDto.BranchId,
                     SoftDelete = true
                 };
 
-                bankDbContext.Staff.Add(st);
-                bankDbContext.SaveChanges();
+                await bankDbContext.Staff.AddAsync(st);
+                await bankDbContext.SaveChangesAsync();
 
                 var response = new
                 {
@@ -232,7 +227,7 @@ namespace Bank.Controllers
                         EmpRole = st.EmpRole,
                         BranchId = st.BranchId,
                         BranchName = checkBranch.BranchName,
-                        GeneratedPassword = st.EmpPass
+                        GeneratedPassword = generatedPassword
                     }
                 };
 
@@ -240,127 +235,133 @@ namespace Bank.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { message = ex.Message });
             }
         }
 
+
         [HttpPut("UpdateStaff/{id}")]
-        public IActionResult UpdateStaff([FromRoute] int id, [FromBody] StaffUpdateDto staffUpdateDto)
+        public async Task<IActionResult> UpdateStaff([FromRoute] int id, [FromBody] StaffUpdateDto staffUpdateDto)
         {
             try
             {
                 if (id < 100000)
-                {
-                    return BadRequest("Provide valid id");
-                }
+                    return BadRequest(new { message = "Provide valid id" });
 
-                var employee = bankDbContext.Staff.Find(id);
-                if (employee == null) 
-                { 
-                    return NotFound("Employee not found"); 
-                }
+                var employee = await bankDbContext.Staff.FindAsync(id);
+                if (employee == null)
+                    return NotFound(new { message = "Employee not found" });
 
                 if (!string.IsNullOrWhiteSpace(staffUpdateDto.EmpEmail))
                 {
-                    bool emailExists = bankDbContext.Staff.Any(s => s.EmpEmail == staffUpdateDto.EmpEmail && s.EmpId != id);
+                    bool emailExists = await bankDbContext.Staff.AnyAsync(s => s.EmpEmail == staffUpdateDto.EmpEmail && s.EmpId != id);
                     if (emailExists)
-                    {
-                        return BadRequest("Email already exists. Please use a different email.");
-                    }
+                        return BadRequest(new { message = "Email already exists. Please use a different email." });
                     employee.EmpEmail = staffUpdateDto.EmpEmail;
                 }
 
                 if (!string.IsNullOrWhiteSpace(staffUpdateDto.EmpMobile))
                 {
-                    bool mobileExists = bankDbContext.Staff.Any(s => s.EmpMobile == staffUpdateDto.EmpMobile && s.EmpId != id);
+                    bool mobileExists = await bankDbContext.Staff.AnyAsync(s => s.EmpMobile == staffUpdateDto.EmpMobile && s.EmpId != id);
                     if (mobileExists)
-                    {
-                        return BadRequest("Mobile number already exists. Please use a different number.");
-                    }
+                        return BadRequest(new { message = "Mobile number already exists. Please use a different number." });
                     employee.EmpMobile = staffUpdateDto.EmpMobile;
                 }
 
                 if (!string.IsNullOrWhiteSpace(staffUpdateDto.EmpName))
-                {
                     employee.EmpName = staffUpdateDto.EmpName;
-                }
-                    
+
                 if (staffUpdateDto.BranchId.HasValue && staffUpdateDto.BranchId.Value > 0)
                 {
-                    var branch = bankDbContext.Branches.Find(staffUpdateDto.BranchId.Value);
+                    var branch = await bankDbContext.Branches.FindAsync(staffUpdateDto.BranchId.Value);
                     if (branch == null)
-                    {
-                        return NotFound("Branch not found");
-                    }
+                        return NotFound(new { message = "Branch not found" });
+
                     employee.BranchId = staffUpdateDto.BranchId.Value;
                 }
 
                 if (!string.IsNullOrWhiteSpace(staffUpdateDto.EmpRole))
-                {
                     employee.EmpRole = staffUpdateDto.EmpRole;
-                }
-                    
-                bankDbContext.SaveChanges();
-                return Ok("Updated successfully");
+
+                await bankDbContext.SaveChangesAsync();
+
+                return Ok(new { message = "Staff updated successfully" });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { message = ex.Message });
             }
         }
 
+
         [HttpPatch("RemoveStaff/{id}")]
-        public IActionResult RemoveStaff([FromRoute] int id)
+        public async Task<IActionResult> RemoveStaff([FromRoute] int id)
         {
             try
             {
                 if (id < 100000)
-                {
-                    return BadRequest("Please give proper id");
-                }
+                    return BadRequest(new { message = "Please give proper id" });
 
-                var emp = bankDbContext.Staff.Find(id);
+                var emp = await bankDbContext.Staff.FindAsync(id);
                 if (emp == null)
-                {
-                    return NotFound("Staff data not found");
-                }
-                emp.SoftDelete = false;
-                bankDbContext.SaveChanges();
+                    return NotFound(new { message = "Staff data not found" });
 
-                return Ok("Deleted successfully");
+                emp.SoftDelete = false;
+                await bankDbContext.SaveChangesAsync();
+
+                return Ok(new { message = "Staff soft-deleted successfully" });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { message = ex.Message });
             }
         }
+
+
         [HttpGet("GetAllStaff")]
-        public IActionResult GetAllStaff()
+        public async Task<IActionResult> GetAllStaff()
         {
             try
             {
-                var staff = bankDbContext.Staff.ToList();
-                if(staff == null)
+                var staff = await bankDbContext.Staff
+                    .Where(s => s.SoftDelete==true)
+                    .Select(s => new StaffResponseDto
+                    {
+                        EmpID = s.EmpId,
+                        EmpName = s.EmpName,
+                        EmpRole = s.EmpRole,
+                        EmpMobile = s.EmpMobile,
+                        EmpEmail = s.EmpEmail,
+                        BranchId = s.BranchId
+                    })
+                    .ToListAsync();
+
+                if (staff == null || staff.Count == 0)
+                    return NotFound(new { message = "No staff found" });
+
+                return Ok(new
                 {
-                    return BadRequest("Staff details cannot be null");
-                }
-                return Ok(staff);
+                    message = "Staff list retrieved successfully",
+                    data = staff
+                });
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { message = ex.Message });
             }
         }
+
+
+
         [HttpGet("GetStaffByBranchId/{branchId}")]
-        public IActionResult GetStaffByBranchId(int branchId)
+        public async Task<IActionResult> GetStaffByBranchId(int branchId)
         {
             try
             {
-                if(branchId <= 0)
-                {
-                    return BadRequest("Please provide valid Branch ID");
-                }
-                var staffList = bankDbContext.Staff
+                if (branchId <= 0)
+                    return BadRequest(new { message = "Please provide valid Branch ID" });
+
+                var staffList = await bankDbContext.Staff
                     .Where(s => s.BranchId == branchId && s.SoftDelete == true)
                     .Select(s => new StaffResponseDto
                     {
@@ -371,97 +372,174 @@ namespace Bank.Controllers
                         EmpEmail = s.EmpEmail,
                         BranchId = branchId
                     })
-                    .ToList();
+                    .ToListAsync();
 
                 if (staffList.Count == 0)
-                {
-                    return NotFound($"No staff found for branch ID {branchId}");
-                }
+                    return NotFound(new { message = $"No staff found for branch ID {branchId}" });
 
-                return Ok(staffList);
+                return Ok(new { message = "Staff list retrieved successfully", data = staffList });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { message = ex.Message });
             }
         }
 
+
         [HttpGet("GetStaffByID/{id}")]
-        public IActionResult GetStaffByID(int id)
+        public async Task<IActionResult> GetStaffByID(int id)
         {
             try
             {
                 if (id < 100000)
-                {
-                    return BadRequest("Please provide valid Staff ID");
-                }
-                var emp = bankDbContext.Staff
-                            .Where(s => s.EmpId == id && s.SoftDelete == true)
-                            .Select(s => new StaffResponseDto
-                            {
-                                EmpID = s.EmpId,
-                                EmpName = s.EmpName,
-                                EmpRole = s.EmpRole,
-                                EmpMobile = s.EmpMobile,
-                                EmpEmail = s.EmpEmail,
-                                BranchId = s.BranchId
-                            }).FirstOrDefault();
+                    return BadRequest(new { message = "Please provide valid Staff ID" });
+
+                var emp = await bankDbContext.Staff
+                    .Where(s => s.EmpId == id && s.SoftDelete == true)
+                    .Select(s => new StaffResponseDto
+                    {
+                        EmpID = s.EmpId,
+                        EmpName = s.EmpName,
+                        EmpRole = s.EmpRole,
+                        EmpMobile = s.EmpMobile,
+                        EmpEmail = s.EmpEmail,
+                        BranchId = s.BranchId
+                    })
+                    .FirstOrDefaultAsync();
+
                 if (emp == null)
-                {
-                    return NotFound($"Staff with StaffID {id} not found");
-                }
-                return Ok(emp);
+                    return NotFound(new { message = $"Staff with StaffID {id} not found" });
+
+                return Ok(new { message = "Staff retrieved successfully", data = emp });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { message = ex.Message });
             }
         }
+
 
         [HttpGet("GetDeletedStaff")]
-        public IActionResult GetDStaff()
+        public async Task<IActionResult> GetDStaff()
         {
             try
             {
-                var dstaff = bankDbContext.Staff
+                var dstaff = await bankDbContext.Staff
                     .Where(s => s.SoftDelete == false)
-                    .ToList();
+                    .ToListAsync();
+
                 if (dstaff.Count == 0)
-                {
-                    return NotFound("No deleted Staff");
-                }
-                return Ok(dstaff);
+                    return NotFound(new { message = "No deleted Staff" });
+
+                return Ok(new { message = "Deleted staff retrieved successfully", data = dstaff });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { message = ex.Message });
             }
         }
 
+
         [HttpDelete("PermanantDeleteStaff/{id}")]
-        public IActionResult PostDStaff(int id)
+        public async Task<IActionResult> PostDStaff(int id)
         {
             try
             {
-                if(id < 100000)
-                {
-                    return BadRequest("Please provide valid Staff ID");
-                }
-                var dstaff = bankDbContext.Staff
+                if (id < 100000)
+                    return BadRequest(new { message = "Please provide valid Staff ID" });
+
+                var dstaff = await bankDbContext.Staff
                     .Where(s => s.EmpId == id && s.SoftDelete == false)
-                    .FirstOrDefault();
+                    .FirstOrDefaultAsync();
 
                 if (dstaff == null)
-                {
-                    return NotFound("No Staff deleted with the given ID");
-                }
+                    return NotFound(new { message = "No Staff deleted with the given ID" });
+
                 bankDbContext.Remove(dstaff);
-                bankDbContext.SaveChanges();
-                return Ok("Permanantly deleted the staff");
+                await bankDbContext.SaveChangesAsync();
+
+                return Ok(new { message = "Permanently deleted the staff" });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /////INTEREST PART/////
+        [HttpPut("ApplyFDInterest")]
+        public async Task<IActionResult> ApplyFDInterest()
+        {
+            try
+            {
+
+                int[] interestRates = {5,6,7,8,9};
+                Random random = new Random();
+                int selectedRate = interestRates[random.Next(interestRates.Length)];
+
+                var fdAccounts = await bankDbContext.Accounts
+                    .Where(a => a.AccType == "Fixed Deposit")
+                    .ToListAsync();
+
+                if (fdAccounts.Count()==0)
+                {
+                    return NotFound(new { message = "No Fixed Deposit accounts found." });
+                }
+
+                foreach (var account in fdAccounts)
+                {
+                    decimal interest = account.Balance * selectedRate / 100;
+                    account.Balance += interest;
+                }
+
+                await bankDbContext.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    message = $"Applied {selectedRate}% interest to all Fixed Deposit accounts.",
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPut("ApplySavingsInterest")]
+        public async Task<IActionResult> ApplySavingsInterest()
+        {
+            try
+            {
+
+                int[] interestRates = {2,3,4};
+                Random random = new Random();
+                int selectedRate = interestRates[random.Next(interestRates.Length)];
+
+                var fdAccounts = await bankDbContext.Accounts
+                    .Where(a => a.AccType == "Savings")
+                    .ToListAsync();
+
+                if (fdAccounts.Count() == 0)
+                {
+                    return NotFound(new { message = "No Savings accounts found." });
+                }
+
+                foreach (var account in fdAccounts)
+                {
+                    decimal interest = account.Balance * selectedRate / 100;
+                    account.Balance += interest;
+                }
+
+                await bankDbContext.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    message = $"Applied {selectedRate}% interest to all Savings accounts.",
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
         }
     }

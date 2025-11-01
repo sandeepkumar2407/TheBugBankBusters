@@ -4,6 +4,6 @@
     {
         public string? BranchName { get; set; } 
         public string? Baddress { get; set; }
-        public string? IfscCode { get; set; }
+        //public string? IfscCode { get; set; }
     }
 }

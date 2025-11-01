@@ -17,6 +17,26 @@
   },
   {
     "ContainingType": "Bank.Controllers.AdminController",
+    "Method": "ApplyFDInterest",
+    "RelativePath": "api/Admin/ApplyFDInterest",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.AdminController",
+    "Method": "ApplySavingsInterest",
+    "RelativePath": "api/Admin/ApplySavingsInterest",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.AdminController",
     "Method": "BranchRegister",
     "RelativePath": "api/Admin/BranchRegister",
     "HttpMethod": "POST",
@@ -428,7 +448,7 @@
     "ContainingType": "Bank.Controllers.ManagerController",
     "Method": "DeleteUser",
     "RelativePath": "api/Manager/DeleteUser/{id}",
-    "HttpMethod": "PUT",
+    "HttpMethod": "PATCH",
     "IsController": true,
     "Order": 0,
     "Parameters": [
@@ -480,7 +500,7 @@
     "ContainingType": "Bank.Controllers.ManagerController",
     "Method": "PostDUsers",
     "RelativePath": "api/Manager/PermanantDeleteUser/{id}",
-    "HttpMethod": "POST",
+    "HttpMethod": "DELETE",
     "IsController": true,
     "Order": 0,
     "Parameters": [
@@ -551,6 +571,27 @@
       {
         "Name": "transferDto",
         "Type": "Bank.Models.TransactionTransferDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.ManagerController",
+    "Method": "UpdateAccountStatus",
+    "RelativePath": "api/Manager/UpdateAccountStatus/{id}",
+    "HttpMethod": "PATCH",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "statusDto",
+        "Type": "Bank.Models.AccountUpdateDto",
         "IsRequired": true
       }
     ],
@@ -697,7 +738,7 @@
     "ContainingType": "Bank.Controllers.StaffController",
     "Method": "DeleteUser",
     "RelativePath": "api/Staff/DeleteUser/{id}",
-    "HttpMethod": "DELETE",
+    "HttpMethod": "PATCH",
     "IsController": true,
     "Order": 0,
     "Parameters": [
@@ -768,6 +809,27 @@
       {
         "Name": "transferDto",
         "Type": "Bank.Models.TransactionTransferDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.StaffController",
+    "Method": "UpdateAccountStatus",
+    "RelativePath": "api/Staff/UpdateAccountStatus/{id}",
+    "HttpMethod": "PATCH",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "statusDto",
+        "Type": "Bank.Models.AccountUpdateDto",
         "IsRequired": true
       }
     ],

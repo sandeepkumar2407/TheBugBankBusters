@@ -1,6 +1,5 @@
 ﻿using Bank.Models;
 using Bank.Services;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,16 +11,18 @@ namespace Bank.Controllers
     {
         private readonly BankDbContext context;
         private readonly IJwtServices jwtServices;
+        private readonly PasswordService passwordService;
 
-        public LoginController(BankDbContext _context, IJwtServices _jwtServices)
+        public LoginController(BankDbContext _context, IJwtServices _jwtServices, PasswordService _passwordService)
         {
             context = _context;
             jwtServices = _jwtServices;
+            passwordService = _passwordService;
         }
 
         // POST: api/Login/Staff
         [HttpPost("Staff")]
-        public IActionResult StaffLogin([FromBody] LoginDto login)
+        public async Task<IActionResult> StaffLogin([FromBody] LoginDto login)
         {
             try
             {
@@ -29,19 +30,23 @@ namespace Bank.Controllers
                 {
                     return BadRequest(new { message = "Invalid login data" });
                 }
-                    
-                var emp = context.Staff.Include(e=>e.Branch).FirstOrDefault(e => e.EmpId == login.EmpId);
+
+                var emp = await context.Staff
+                    .Include(e => e.Branch)
+                    .FirstOrDefaultAsync(e => e.EmpId == login.EmpId);
 
                 if (emp == null)
                 {
                     return NotFound(new { message = "Employee not found" });
-                }   
-
-                if (emp.EmpPass != login.Password)
-                {
-                    return Unauthorized(new { message = "Invalid password" });
                 }
-                    
+
+                bool isPassValid = passwordService.VerifyPassword(emp.EmpPass, login.Password);
+
+                if (!isPassValid)
+                {
+                    return BadRequest(new { message = "Invalid password" });
+                }
+
                 if (!emp.SoftDelete)
                 {
                     return NotFound(new { message = "Employee account is inactive" });
@@ -51,9 +56,9 @@ namespace Bank.Controllers
                     role: emp.EmpRole,
                     empId: emp.EmpId,
                     branchId: emp.BranchId
-                    );
+                );
 
-                return Ok(new LoginResponseDto
+                var response = new
                 {
                     Token = token,
                     Message = "Login successful",
@@ -61,7 +66,9 @@ namespace Bank.Controllers
                     UserId = emp.EmpId,
                     BranchId = emp.BranchId,
                     BranchName = emp.Branch?.BranchName
-                });
+                };
+
+                return Ok(response);
             }
             catch (Exception ex)
             {
@@ -69,44 +76,53 @@ namespace Bank.Controllers
             }
         }
 
-        //POST: api/Login/Customer
-
+        // POST: api/Login/Customer
         [HttpPost("Customer")]
-
-        public IActionResult CustomerLogin([FromBody] LoginCusDto login)
+        public async Task<IActionResult> CustomerLogin([FromBody] LoginCusDto login)
         {
             try
             {
-                if(login == null || login.UserId == null)
+                if (login == null || login.UserId == null)
                 {
                     return BadRequest(new { message = "Invalid login data" });
-                } 
-                var customer = context.Users.FirstOrDefault(u=>u.UserId == login.UserId);
-                if(customer == null)
+                }
+
+                var customer = await context.Users
+                    .FirstOrDefaultAsync(u => u.UserId == login.UserId);
+
+                if (customer == null)
                 {
                     return NotFound(new { message = "Customer not found" });
                 }
-                if(login.Password != customer.LoginPassword)
+
+                bool isPassValid = passwordService.VerifyPassword(customer.LoginPassword, login.Password);
+
+                if (!isPassValid)
                 {
-                    return Unauthorized(new { message = "Invalid Password" });
+                    return BadRequest(new { message = "Invalid password" });
                 }
+
                 if (!customer.SoftDelete)
                 {
                     return NotFound(new { message = "Customer account is inactive" });
                 }
+
                 var token = jwtServices.GenerateToken(
                     role: "Customer",
                     userId: customer.UserId
-                    );
-                return Ok(new LoginResponseDto
+                );
+
+                var response = new
                 {
                     Token = token,
-                    Message = "Login Successful",
+                    Message = "Login successful",
                     Role = "Customer",
                     UserId = customer.UserId,
-                    BranchId = null,
-                    BranchName = null,
-                });
+                    BranchId = (int?)null,
+                    BranchName = (string?)null
+                };
+
+                return Ok(response);
             }
             catch (Exception ex)
             {
@@ -116,8 +132,9 @@ namespace Bank.Controllers
 
         // POST: api/Login/Logout
         [HttpPost("Logout")]
-        public IActionResult Logout()
+        public async Task<IActionResult> Logout()
         {
+            await Task.CompletedTask; // placeholder for async consistency
             return Ok(new { message = "Logged out successfully" });
         }
     }

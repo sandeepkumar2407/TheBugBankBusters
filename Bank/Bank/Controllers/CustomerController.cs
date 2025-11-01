@@ -1,4 +1,5 @@
 ﻿using Bank.Models;
+using Bank.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -9,24 +10,30 @@ namespace Bank.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles="Customer")]
+    [Authorize(Roles = "Customer")]
     public class CustomerController : BaseController
     {
         readonly BankDbContext bankDbContext;
-        public CustomerController(BankDbContext _bankDbContext)
+        readonly PasswordService passwordService;
+
+        public CustomerController(BankDbContext _bankDbContext,PasswordService _passwordService)
         {
-            this.bankDbContext = _bankDbContext;
+            bankDbContext = _bankDbContext;
+            passwordService = _passwordService;
         }
 
-        //////////User section starts ///////////
+        ////////// User section starts //////////
         [HttpGet("GetProfile")]
-        public IActionResult GetProfile()
+        public async Task<IActionResult> GetProfile()
         {
             try
             {
-                var userid = GetUserId();
-                var user = bankDbContext.Users
-                    .Where(u => u.UserId == userid)
+                var userId = GetUserId();
+                if (userId == null)
+                    return BadRequest(new { message = "Invalid user ID" });
+
+                var user = await bankDbContext.Users
+                    .Where(u => u.UserId == userId)
                     .Select(u => new UserDto
                     {
                         UserId = u.UserId,
@@ -39,100 +46,108 @@ namespace Bank.Controllers
                         PANCard = u.PANCard,
                         AadharCard = u.AadharCard
                     })
-                    .FirstOrDefault();
+                    .FirstOrDefaultAsync();
 
                 if (user == null)
-                    return NotFound($"User with ID {userid} not found");
+                    return NotFound(new { message = $"User with ID {userId} not found" });
 
                 return Ok(user);
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(500, new { message = "Server error", error = ex.Message });
             }
         }
+
         [HttpPatch("UpdateLoginPassword")]
-        public IActionResult UpdateLoginPassword(UpdatePassDto passDto)
+        public async Task<IActionResult> UpdateLoginPassword([FromBody] UpdatePassDto passDto)
         {
             try
             {
                 var userId = GetUserId();
-                if (passDto == null)
-                    return BadRequest("Invalid request");
+                if (userId == null || passDto == null)
+                    return BadRequest(new { message = "Invalid request" });
 
-                var user = bankDbContext.Users.Find(userId);
+                var user = await bankDbContext.Users.FindAsync(userId);
+
                 if (user == null)
-                    return NotFound("User not found for this user ID");
+                    return NotFound(new { message = "User not found" });
 
-                if (!VerifyPassword(passDto.previousPassword, user.LoginPassword))
-                    return BadRequest("Your old password is incorrect");
+                bool isUserPass = passwordService.VerifyPassword(user.LoginPassword, passDto.previousPassword);
+
+                if (!isUserPass)
+                    return BadRequest(new { message = "Your old password is incorrect" });
 
                 if (passDto.newPassword != passDto.confirmPassword)
-                    return BadRequest("New password and confirmation do not match");
+                    return BadRequest(new { message = "New password and confirmation do not match" });
 
-                if (VerifyPassword(passDto.newPassword, user.LoginPassword))
-                    return BadRequest("New password cannot be the same as the old password");
+                bool isNewPass = passwordService.VerifyPassword(user.LoginPassword,passDto.newPassword);
 
-                user.LoginPassword = passDto.newPassword;
-                bankDbContext.SaveChanges();
+                if (isNewPass)
+                    return BadRequest(new { message = "New password cannot be the same as the old password" });
 
-                return Ok("Password updated successfully");
+                user.LoginPassword = passwordService.HashPassword(passDto.newPassword);
+                await bankDbContext.SaveChangesAsync();
+
+                return Ok(new { message = "Password updated successfully" });
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error updating password: {ex.Message}");
+                return StatusCode(500, new { message = "Error updating password", error = ex.Message });
             }
         }
+
         [HttpPatch("UpdateTransacPassword")]
-        public IActionResult UpdateTransacPassword(UpdatePassDto passDto)
+        public async Task<IActionResult> UpdateTransacPassword([FromBody] UpdatePassDto passDto)
         {
             try
             {
                 var userId = GetUserId();
-                if (passDto == null)
-                    return BadRequest("Invalid request");
+                if (userId == null || passDto == null)
+                    return BadRequest(new { message = "Invalid request" });
 
-                var user = bankDbContext.Users.Find(userId);
+                var user = await bankDbContext.Users.FindAsync(userId);
                 if (user == null)
-                    return NotFound("User not found for this user ID");
+                    return NotFound(new { message = "User not found" });
 
-                if (!VerifyPassword(passDto.previousPassword, user.TransactionPassword))
-                    return BadRequest("Your old password is incorrect");
+                bool isUserPass = passwordService.VerifyPassword(user.TransactionPassword, passDto.previousPassword);
 
-                if (VerifyPassword(passDto.newPassword, user.TransactionPassword))
-                    return BadRequest("New password cannot be the same as the old password");
+                if (!isUserPass)
+                    return BadRequest(new { message = "Your old password is incorrect" });
 
                 if (passDto.newPassword != passDto.confirmPassword)
-                    return BadRequest("New password and confirmation do not match");
+                    return BadRequest(new { message = "New password and confirmation do not match" });
 
-                user.TransactionPassword = passDto.newPassword;
-                bankDbContext.SaveChanges();
+                bool isNewPass = passwordService.VerifyPassword(user.TransactionPassword, passDto.newPassword);
 
-                return Ok("Password updated successfully");
+                if (isNewPass)
+                    return BadRequest(new { message = "New password cannot be the same as the old password" });
+
+                user.LoginPassword = passwordService.HashPassword(passDto.newPassword);
+                await bankDbContext.SaveChangesAsync();
+                return Ok(new { message = "Password updated successfully" });
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error updating password: {ex.Message}");
+                return StatusCode(500, new { message = "Error updating password", error = ex.Message });
             }
         }
+        ////////// User section ends //////////
 
-        //////////User section ends ///////////
-        //////////Accounts section starts ///////////
 
+        ////////// Accounts section starts //////////
         [HttpGet("GetYourAccounts")]
-        public IActionResult GetYourAccounts()
+        public async Task<IActionResult> GetYourAccounts()
         {
             try
             {
                 var userId = GetUserId();
-                if(userId < 100)
-                {
-                    return BadRequest("Invalid user ID");
-                }
-                // Fetch accounts with related Branch info
-                var accounts = bankDbContext.Accounts
+                if (userId == null)
+                    return BadRequest(new { message = "Invalid user ID" });
+
+                var accounts = await bankDbContext.Accounts
                     .Where(a => a.UserId == userId)
-                    .Include(a => a.IfscCodeNavigation) // includes Branch info
+                    .Include(a => a.IfscCodeNavigation)
                     .Select(a => new AccountCustRespDto
                     {
                         AccNo = a.AccNo,
@@ -144,98 +159,37 @@ namespace Bank.Controllers
                         BranchName = a.IfscCodeNavigation.BranchName,
                         BranchAddress = a.IfscCodeNavigation.Baddress
                     })
-                    .ToList();
+                    .ToListAsync();
 
-                // Handle if no accounts found
                 if (accounts == null || accounts.Count == 0)
-                {
-                    return NotFound($"No accounts found for user ID {userId}");
-                }
+                    return NotFound(new { message = $"No accounts found for user ID {userId}" });
 
-                // Return DTO response
                 return Ok(accounts);
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error fetching accounts: {ex.Message}");
+                return StatusCode(500, new { message = "Error fetching accounts", error = ex.Message });
             }
         }
-        //////////Accounts section ends ///////////
+        ////////// Accounts section ends //////////
 
-        ////////Transactions part starts /////////
-        private void SaveTransaction(int? fromAcc, int? toAcc, decimal amount, string type, string status, string? comments)
-        {
-            var transaction = new Transaction
-            {
-                AccNo = fromAcc,
-                ToAcc = toAcc,
-                Amount = amount,
-                TransacType = type,
-                TransacStatus = status,
-                TimeStamps = DateTime.Now,
-                Comments = comments
-            };
-            bankDbContext.Transactions.Add(transaction);
-        }
-        private bool VerifyPassword(string? inputPassword, string hashedPassword)
-        {
-            //return BCrypt.Net.BCrypt.Verify(inputPassword, hashedPassword);
-            return inputPassword == hashedPassword;
-            //return true;
-        }
+
+        //////// Helper functions ////////
+        //private bool VerifyPassword(string? inputPassword, string hashedPassword)
+        //{
+        //    //return BCrypt.Net.BCrypt.Verify(inputPassword, hashedPassword);
+        //    return inputPassword == hashedPassword;
+        //}
+
+        //////// Transactions section starts ////////
 
         [HttpGet("GetTransacsByAcc/{accNo}")]
-        public IActionResult GetTransacsByAcc(int accNo)
+        public async Task<IActionResult> GetTransacsByAcc(int accNo)
         {
             try
             {
-                var transactions = bankDbContext.Transactions
-                    .Where(t => t.AccNo == accNo)
-                    .Select(t => new TransactionResponseDto
-                    {
-                        AccNo = t.AccNo,
-                        TransacId = t.TransacId,
-                        TransacType = t.TransacType,
-                        Amount = t.Amount,
-                        ToAcc = t.ToAcc,
-                        TimeStamps = t.TimeStamps,
-                        TransacStatus = t.TransacStatus,
-                        Comments = t.Comments
-                    }).ToList();
-
-                if (transactions.Count == 0)
-                {
-                    return NotFound($"Transactions for account {accNo} not found");
-                }
-                return Ok(transactions);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        [HttpGet("GetTransactionHistory")]
-        public IActionResult GetTransactionHistory()
-        {
-            try
-            {
-                var userId = GetUserId();
-                // Step 1: Get all account numbers for the user
-                var userAccNos = bankDbContext.Accounts
-                    .Where(a => a.UserId == userId)
-                    .Select(a => a.AccNo)
-                    .ToList();
-
-                if (userAccNos == null || userAccNos.Count == 0)
-                {
-                    return NotFound($"No accounts found for user ID {userId}");
-                }
-
-                // Step 2: Get all transactions related to those accounts
-                var transactions = bankDbContext.Transactions
-                    .Where(t => userAccNos.Contains((int)t.AccNo) || userAccNos.Contains((int)t.ToAcc))
-                    .OrderByDescending(t => t.TimeStamps) // optional: sort by latest first
+                var transactions = await bankDbContext.Transactions
+                    .Where(t => (t.AccNo == accNo || t.ToAcc == accNo))
                     .Select(t => new TransactionResponseDto
                     {
                         AccNo = t.AccNo,
@@ -247,115 +201,135 @@ namespace Bank.Controllers
                         TransacStatus = t.TransacStatus,
                         Comments = t.Comments
                     })
-                    .ToList();
+                    .ToListAsync();
 
-                if (transactions == null || transactions.Count == 0)
-                {
-                    return NotFound($"No transactions found for user ID {userId}");
-                }
+                if (transactions.Count == 0)
+                    return NotFound(new { message = $"Transactions for account {accNo} not found" });
 
-                // Step 3: Return all transactions
                 return Ok(transactions);
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error fetching transactions: {ex.Message}");
+                return StatusCode(500, new { message = "Error fetching transactions", error = ex.Message });
+            }
+        }
+
+        [HttpGet("GetTransactionHistory")]
+        public async Task<IActionResult> GetTransactionHistory()
+        {
+            try
+            {
+                var userId = GetUserId();
+                if (userId == null)
+                    return BadRequest(new { message = "Invalid user ID" });
+
+                var userAccNos = await bankDbContext.Accounts
+                    .Where(a => a.UserId == userId)
+                    .Select(a => a.AccNo)
+                    .ToListAsync();
+
+                if (userAccNos == null || userAccNos.Count == 0)
+                    return NotFound(new { message = $"No accounts found for user ID {userId}" });
+
+                var transactions = await bankDbContext.Transactions
+                    .Where(t => userAccNos.Contains((int)t.AccNo) || userAccNos.Contains((int)t.ToAcc))
+                    .OrderByDescending(t => t.TimeStamps)
+                    .Select(t => new TransactionResponseDto
+                    {
+                        AccNo = t.AccNo,
+                        TransacId = t.TransacId,
+                        TransacType = t.TransacType,
+                        Amount = t.Amount,
+                        ToAcc = t.ToAcc,
+                        TimeStamps = t.TimeStamps,
+                        TransacStatus = t.TransacStatus,
+                        Comments = t.Comments
+                    })
+                    .ToListAsync();
+
+                if (transactions.Count == 0)
+                    return NotFound(new { message = $"No transactions found for user ID {userId}" });
+
+                return Ok(transactions);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error fetching transaction history", error = ex.Message });
             }
         }
 
         [HttpPost("Transactions/Transfer")]
-        public IActionResult Transfer([FromBody] CustTransacTransferDto dto)
+        public async Task<IActionResult> Transfer([FromBody] CustTransacTransferDto dto)
         {
             try
             {
                 if (dto == null)
-                    return BadRequest("Transaction details are required.");
+                    return BadRequest(new { message = "Transaction details are required." });
 
                 if (dto.Amount <= 0)
-                {
-                    //SaveTransaction(dto.FromAcc, dto.ToAcc, dto.Amount, "Transfer", "Failed", "Invalid amount");
-                    //bankDbContext.SaveChanges();
-                    return BadRequest("Amount must be greater than zero.");
-                }
+                    return BadRequest(new { message = "Amount must be greater than zero." });
 
-                if(dto.Amount > 150000)
-                {
-                    return BadRequest("Amount exceeds the transfer limit of ₹150,000.");
-                }
+                if (dto.Amount > 150000)
+                    return BadRequest(new { message = "Amount exceeds the transfer limit of ₹150,000." });
 
                 if (dto.FromAcc == dto.ToAcc)
-                {
-                    SaveTransaction(dto.FromAcc, dto.ToAcc, dto.Amount, "Transfer", "Failed", "Same source and destination account");
-                    bankDbContext.SaveChanges();
-                    return BadRequest("Cannot transfer to the same account.");
-                }
+                    return BadRequest(new { message = "Cannot transfer to the same account." });
 
-                var fromAccount = bankDbContext.Accounts
+                var fromAccount = await bankDbContext.Accounts
                     .Include(a => a.User)
-                    .FirstOrDefault(a => a.AccNo == dto.FromAcc);
+                    .FirstOrDefaultAsync(a => a.AccNo == dto.FromAcc);
 
-                var toAccount = bankDbContext.Accounts
-                    .FirstOrDefault(a => a.AccNo == dto.ToAcc);
+                var toAccount = await bankDbContext.Accounts
+                    .FirstOrDefaultAsync(a => a.AccNo == dto.ToAcc);
 
                 if (fromAccount == null || toAccount == null)
-                {
-                    //SaveTransaction(dto.FromAcc, dto.ToAcc, dto.Amount, "Transfer", "Failed", "Invalid account(s)");
-                    //bankDbContext.SaveChanges();
-                    return NotFound("Invalid account(s).");
-                }
+                    return NotFound(new { message = "Invalid account(s)." });
 
                 if (!fromAccount.AccountStatus.Equals("Active", StringComparison.OrdinalIgnoreCase))
-                {
-                    SaveTransaction(dto.FromAcc, dto.ToAcc, dto.Amount, "Transfer", "Failed", $"Sender account is {fromAccount.AccountStatus}");
-                    bankDbContext.SaveChanges();
-                    return BadRequest($"Transfer not allowed. From account is {fromAccount.AccountStatus}.");
-                }
+                    return BadRequest(new { message = $"Transfer not allowed. From account is {fromAccount.AccountStatus}." });
 
                 if (toAccount.AccountStatus.Equals("Closed", StringComparison.OrdinalIgnoreCase))
-                {
-                    SaveTransaction(dto.FromAcc, dto.ToAcc, dto.Amount, "Transfer", "Failed", "Receiver account is closed");
-                    bankDbContext.SaveChanges();
-                    return BadRequest("Cannot transfer to a closed account.");
-                }
+                    return BadRequest(new { message = "Cannot transfer to a closed account." });
 
-                if (!VerifyPassword(dto.TransactionPass, fromAccount.User.TransactionPassword))
-                {
-                    SaveTransaction(dto.FromAcc, dto.ToAcc, dto.Amount, "Transfer", "Failed", "Incorrect transaction password");
-                    bankDbContext.SaveChanges();
-                    return Unauthorized("Invalid transaction password.");
-                }
+                bool isTransPass = passwordService.VerifyPassword(fromAccount.User.TransactionPassword, dto.TransactionPass);
+
+                if (!isTransPass)
+                    return Unauthorized(new { message = "Invalid transaction password." });
 
                 if (fromAccount.Balance < dto.Amount)
-                {
-                    SaveTransaction(dto.FromAcc, dto.ToAcc, dto.Amount, "Transfer", "Failed", "Insufficient balance");
-                    bankDbContext.SaveChanges();
-                    return BadRequest("Insufficient balance.");
-                }
+                    return BadRequest(new { message = "Insufficient balance." });
 
                 fromAccount.Balance -= dto.Amount;
                 toAccount.Balance += dto.Amount;
 
-                string senderComment = $"Transferred Rs.{dto.Amount} to A/C {dto.ToAcc}";
-
+                var senderComment = $"Transferred ₹{dto.Amount} to A/C {dto.ToAcc}";
                 if (!string.IsNullOrWhiteSpace(dto.Comments))
-                {
                     senderComment += $" | Note: {dto.Comments}";
-                }
 
-                SaveTransaction(dto.FromAcc, dto.ToAcc, dto.Amount, "Transfer", "Completed", senderComment);
+                var transaction = new Transaction
+                {
+                    AccNo = dto.FromAcc,
+                    ToAcc = dto.ToAcc,
+                    Amount = dto.Amount,
+                    TransacType = "Transfer",
+                    TransacStatus = "Completed",
+                    TimeStamps = DateTime.Now,
+                    Comments = senderComment
+                };
 
-                bankDbContext.SaveChanges();
+                await bankDbContext.Transactions.AddAsync(transaction);
+                await bankDbContext.SaveChangesAsync();
 
-                return Ok($"Successfully transferred ₹{dto.Amount} from A/C {dto.FromAcc} to A/C {dto.ToAcc}.");
+                return Ok(new { message = $"Successfully transferred ₹{dto.Amount} from A/C {dto.FromAcc} to A/C {dto.ToAcc}." });
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error: {ex.Message}");
+                return StatusCode(500, new { message = "Error processing transfer", error = ex.Message });
             }
         }
 
         [HttpPost("ScheduleTransaction")]
-        public IActionResult ScheduleTransaction([FromBody] ScheduleTransactionDto dto)
+        public async Task<IActionResult> ScheduleTransaction([FromBody] ScheduleTransactionDto dto)
         {
             try
             {
@@ -369,24 +343,24 @@ namespace Bank.Controllers
                 if (dto.ScheduledTime < now || dto.ScheduledTime > now.AddHours(24))
                     return BadRequest(new { message = "Scheduled time must be within 24 hours from now." });
 
-                //var fromAccount = bankDbContext.Accounts.Find(dto.FromAccountId);
-                var fromAccount = bankDbContext.Accounts
+                var fromAccount = await bankDbContext.Accounts
                     .Include(a => a.User)
-                    .FirstOrDefault(a => a.AccNo == dto.FromAccountId);
-                //var toAccount = bankDbContext.Accounts.Find(dto.ToAccountId);
-                var toAccount = bankDbContext.Accounts
-                    .FirstOrDefault(a => a.AccNo == dto.ToAccountId);
+                    .FirstOrDefaultAsync(a => a.AccNo == dto.FromAccountId);
+
+                var toAccount = await bankDbContext.Accounts
+                    .FirstOrDefaultAsync(a => a.AccNo == dto.ToAccountId);
 
                 if (fromAccount == null || toAccount == null)
                     return BadRequest(new { message = "Invalid account(s)." });
-                if(dto.TransactionPass == null)
-                {
-                    return BadRequest(new {message = "Missing transaction password"});
-                }
-                if(dto.TransactionPass != fromAccount.User.TransactionPassword)
-                {
-                    return Unauthorized(new { message =  "Transation password is incorrect" });
-                }
+
+                if (string.IsNullOrEmpty(dto.TransactionPass))
+                    return BadRequest(new { message = "Missing transaction password." });
+
+                bool isTransPass = passwordService.VerifyPassword(fromAccount.User.TransactionPassword, dto.TransactionPass);
+
+                if (!isTransPass)
+                    return Unauthorized(new { message = "Invalid transaction password." });
+
                 var scheduled = new ScheduledTransaction
                 {
                     fromAcc = dto.FromAccountId,
@@ -395,73 +369,78 @@ namespace Bank.Controllers
                     ScheduleTime = dto.ScheduledTime
                 };
 
-                bankDbContext.ScheduledTransactions.Add(scheduled);
-                bankDbContext.SaveChanges();
+                await bankDbContext.ScheduledTransactions.AddAsync(scheduled);
+                await bankDbContext.SaveChangesAsync();
 
                 return Ok(new { message = "Transaction scheduled successfully." });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Server error", error = ex.Message });
+                return StatusCode(500, new { message = "Error scheduling transaction", error = ex.Message });
             }
         }
 
         [HttpGet("ScheduledTransactions")]
-        public IActionResult GetScheduledTransactions()
+        public async Task<IActionResult> GetScheduledTransactions()
         {
-            var user = GetUserId();
-            var list = bankDbContext.ScheduledTransactions
-                .OrderByDescending(t => t.CreatedAt)
-                .ToList();
+            try
+            {
+                var list = await bankDbContext.ScheduledTransactions
+                    .OrderByDescending(t => t.CreatedAt)
+                    .ToListAsync();
 
-            return Ok(list);
+                if (list.Count == 0)
+                    return NotFound(new { message = "No scheduled transactions found." });
+
+                return Ok(list);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error fetching scheduled transactions", error = ex.Message });
+            }
         }
 
         [HttpPatch("CancelScheduledTransaction/{id}")]
-        public IActionResult CancelScheduledTransaction(int id, [FromBody] CancelTransactionDto dto)
+        public async Task<IActionResult> CancelScheduledTransaction(int id, [FromBody] CancelTransactionDto dto)
         {
             try
             {
                 if (dto == null || string.IsNullOrEmpty(dto.TransactionPass))
                     return BadRequest(new { message = "Transaction password is required." });
 
-                var scheduledTx = bankDbContext.ScheduledTransactions.Find(id);
-
+                var scheduledTx = await bankDbContext.ScheduledTransactions.FindAsync(id);
                 if (scheduledTx == null)
                     return NotFound(new { message = "Scheduled transaction not found." });
 
-                // Check if already executed or failed
                 if (scheduledTx.TransacStatus == "Executed" || scheduledTx.TransacStatus == "Failed")
                     return BadRequest(new { message = "This transaction cannot be cancelled as it is already processed." });
 
-                // Check if time has passed
                 if (scheduledTx.ScheduleTime <= DateTime.Now)
                     return BadRequest(new { message = "Cannot cancel a transaction whose scheduled time has already passed." });
 
-                // Verify transaction password
-                var fromAccount = bankDbContext.Accounts
+                var fromAccount = await bankDbContext.Accounts
                     .Include(a => a.User)
-                    .FirstOrDefault(a => a.AccNo == scheduledTx.fromAcc);
+                    .FirstOrDefaultAsync(a => a.AccNo == scheduledTx.fromAcc);
 
                 if (fromAccount == null)
                     return BadRequest(new { message = "Linked account not found." });
 
-                if (dto.TransactionPass != fromAccount.User.TransactionPassword)
+                bool isTransPass = passwordService.VerifyPassword(fromAccount.User.TransactionPassword, dto.TransactionPass);
+
+                if (!isTransPass)
                     return Unauthorized(new { message = "Invalid transaction password." });
 
-                // Cancel transaction
                 scheduledTx.TransacStatus = "Cancelled";
                 bankDbContext.ScheduledTransactions.Update(scheduledTx);
-                bankDbContext.SaveChanges();
+                await bankDbContext.SaveChangesAsync();
 
                 return Ok(new { message = "Scheduled transaction cancelled successfully." });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Server error", error = ex.Message });
+                return StatusCode(500, new { message = "Error cancelling transaction", error = ex.Message });
             }
         }
-
-
+        //////// Transactions section ends ////////
     }
 }
