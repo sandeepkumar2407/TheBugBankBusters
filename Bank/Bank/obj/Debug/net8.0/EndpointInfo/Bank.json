@@ -5,6 +5,49 @@
     "version": "1.0"
   },
   "paths": {
+    "/api/Admin/GetProfile": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Admin/UpdateLoginPassword": {
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePassDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePassDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePassDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/Admin/BranchRegister": {
       "post": {
         "tags": [
@@ -637,6 +680,18 @@
         }
       }
     },
+    "/api/Manager/GetProfile": {
+      "get": {
+        "tags": [
+          "Manager"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/Manager/UpdateLoginPassword": {
       "patch": {
         "tags": [
@@ -1108,6 +1163,18 @@
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Staff/GetProfile": {
+      "get": {
+        "tags": [
+          "Staff"
+        ],
         "responses": {
           "200": {
             "description": "OK"

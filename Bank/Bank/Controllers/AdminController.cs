@@ -259,7 +259,7 @@ namespace Bank.Controllers
                 if (await bankDbContext.Staff.AnyAsync(s => s.EmpMobile == staffDto.EmpMobile))
                     return BadRequest(new { message = "Mobile number already exists. Please use a different number." });
 
-                string generatedPassword = $"{staffDto.EmpName}@123";
+                string generatedPassword = $"{staffDto.EmpMobile}@123";
                 string hashedPassword = passwordService.HashPassword(generatedPassword);
                 var st = new Staff
                 {
@@ -410,7 +410,6 @@ namespace Bank.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
-
 
 
         [HttpGet("GetStaffByBranchId/{branchId}")]

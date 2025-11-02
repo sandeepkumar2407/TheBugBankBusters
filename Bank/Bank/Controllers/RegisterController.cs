@@ -61,7 +61,7 @@ namespace Bank.Controllers
                     return BadRequest(new { message = "Aadhar card already exists" });
                 }
 
-                string generatedPassword = $"{newUser.UserName}@123";
+                string generatedPassword = $"{newUser.Mobile}@123";
                 string hashedPassword = passwordService.HashPassword(generatedPassword);
 
                 var user = new User

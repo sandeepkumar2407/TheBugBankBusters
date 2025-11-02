@@ -188,7 +188,7 @@ namespace Bank.Controllers
                     await bankDbContext.Users.AnyAsync(u => u.AadharCard == newUser.AadharCard && u.SoftDelete == true))
                     return BadRequest(new { message = "Aadhar card already exists" });
 
-                string generatedPassword = $"{newUser.UserName}@123";
+                string generatedPassword = $"{newUser.Mobile}@123";
                 string hasedPassword = passwordService.HashPassword(generatedPassword);
 
                 var u = new User

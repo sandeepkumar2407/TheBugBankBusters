@@ -99,6 +99,16 @@
   },
   {
     "ContainingType": "Bank.Controllers.AdminController",
+    "Method": "GetProfile",
+    "RelativePath": "api/Admin/GetProfile",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.AdminController",
     "Method": "GetStaffByBranchId",
     "RelativePath": "api/Admin/GetStaffByBranchId/{branchId}",
     "HttpMethod": "GET",
@@ -177,6 +187,22 @@
       {
         "Name": "br",
         "Type": "Bank.Models.BranchUpdateDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.AdminController",
+    "Method": "UpdateLoginPassword",
+    "RelativePath": "api/Admin/UpdateLoginPassword",
+    "HttpMethod": "PATCH",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "passDto",
+        "Type": "Bank.Models.UpdatePassDto",
         "IsRequired": true
       }
     ],
@@ -482,6 +508,16 @@
   },
   {
     "ContainingType": "Bank.Controllers.ManagerController",
+    "Method": "GetProfile",
+    "RelativePath": "api/Manager/GetProfile",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.ManagerController",
     "Method": "GetStaffByID",
     "RelativePath": "api/Manager/GetStaffByID/{id}",
     "HttpMethod": "GET",
@@ -748,6 +784,16 @@
         "IsRequired": true
       }
     ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Bank.Controllers.StaffController",
+    "Method": "GetProfile",
+    "RelativePath": "api/Staff/GetProfile",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
     "ReturnTypes": []
   },
   {
