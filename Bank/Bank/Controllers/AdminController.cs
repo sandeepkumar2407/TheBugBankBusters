@@ -10,7 +10,7 @@ namespace Bank.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize(Roles="BankAdmin")]
-    public class AdminController : ControllerBase
+    public class AdminController : BaseController
     {
         readonly BankDbContext bankDbContext;
         readonly PasswordService passwordService;
@@ -19,6 +19,78 @@ namespace Bank.Controllers
         {
             this.bankDbContext = _bankDbContext;
             this.passwordService = _passwordService;
+        }
+
+        [HttpGet("GetProfile")]
+        public async Task<IActionResult> GetProfile()
+        {
+            try
+            {
+                var staffId = GetUserId(); 
+                if (staffId == null)
+                    return BadRequest(new { message = "Invalid staff ID" });
+
+                var staff = await bankDbContext.Staff
+                    .Include(s => s.Branch)
+                    .Where(s => s.EmpId == staffId)
+                    .Select(s => new StaffProfileDto
+                    {
+                        EmpId = s.EmpId,
+                        EmpName = s.EmpName,
+                        EmpRole = s.EmpRole,
+                        EmpMobile = s.EmpMobile,
+                        EmpEmail = s.EmpEmail,
+                        BranchId = s.BranchId,
+                        BranchName = s.Branch != null ? s.Branch.BranchName : string.Empty,
+                        BranchAddress = s.Branch != null ? s.Branch.Baddress : string.Empty
+                    })
+                    .FirstOrDefaultAsync();
+
+                if (staff == null)
+                    return NotFound(new { message = $"Staff with ID {staffId} not found" });
+
+                return Ok(staff);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+
+        [HttpPatch("UpdateLoginPassword")]
+        public async Task<IActionResult> UpdateLoginPassword([FromBody] UpdatePassDto passDto)
+        {
+            try
+            {
+                var EmpId = GetEmpId();
+                if (passDto == null)
+                    return BadRequest(new { message = "Invalid request" });
+
+                var staff = await bankDbContext.Staff.FindAsync(EmpId);
+                if (staff == null)
+                    return NotFound(new { message = "Staff not found for this staff ID" });
+
+                bool isPrevPass = passwordService.VerifyPassword(staff.EmpPass, passDto.previousPassword);
+                if (!isPrevPass)
+                    return BadRequest(new { message = "Your old password is incorrect" });
+
+                if (passDto.newPassword != passDto.confirmPassword)
+                    return BadRequest(new { message = "New password and confirmation do not match" });
+
+                bool isNewPass = passwordService.VerifyPassword(staff.EmpPass, passDto.newPassword);
+                if (isNewPass)
+                    return BadRequest(new { message = "New password cannot be the same as the old password" });
+
+                staff.EmpPass = passwordService.HashPassword(passDto.newPassword);
+                await bankDbContext.SaveChangesAsync();
+
+                return Ok(new { message = "Password updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = $"Error updating password: {ex.Message}" });
+            }
         }
 
         ////////// BRANCH PART //////////
@@ -76,7 +148,6 @@ namespace Bank.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
-
 
         [HttpGet("GetBranchById/{id}")]
         public async Task<IActionResult> GetBranchById(int id)
@@ -169,17 +240,6 @@ namespace Bank.Controllers
             }
         }
 
-
-        ////////// STAFF PART //////////
-
-        //private static string GenerateRandomPassword(int length)
-        //{
-        //    const string validChars = "ABCDEFGHJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$&";
-        //    Random random = new Random();
-        //    return new string(Enumerable.Repeat(validChars, length)
-        //                                .Select(s => s[random.Next(s.Length)])
-        //                                .ToArray());
-        //}
 
         [HttpPost("AddStaff")]
         public async Task<IActionResult> AddStaff([FromBody] StaffDto staffDto)

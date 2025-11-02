@@ -55,7 +55,7 @@ namespace Bank.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Server error", error = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
@@ -93,7 +93,7 @@ namespace Bank.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Error updating password", error = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
@@ -129,7 +129,7 @@ namespace Bank.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Error updating password", error = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
         ////////// User section ends //////////
@@ -168,18 +168,11 @@ namespace Bank.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Error fetching accounts", error = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
         ////////// Accounts section ends //////////
 
-
-        //////// Helper functions ////////
-        //private bool VerifyPassword(string? inputPassword, string hashedPassword)
-        //{
-        //    //return BCrypt.Net.BCrypt.Verify(inputPassword, hashedPassword);
-        //    return inputPassword == hashedPassword;
-        //}
 
         //////// Transactions section starts ////////
 
@@ -210,7 +203,7 @@ namespace Bank.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Error fetching transactions", error = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
@@ -254,7 +247,7 @@ namespace Bank.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Error fetching transaction history", error = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
@@ -324,7 +317,7 @@ namespace Bank.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Error processing transfer", error = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
@@ -376,29 +369,55 @@ namespace Bank.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Error scheduling transaction", error = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
+
 
         [HttpGet("ScheduledTransactions")]
         public async Task<IActionResult> GetScheduledTransactions()
         {
             try
             {
+                var userId = GetUserId();
+                if (userId == null)
+                    return BadRequest(new { message = "Invalid user ID" });
+
+                var userAccNos = await bankDbContext.Accounts
+                    .Where(a => a.UserId == userId)
+                    .Select(a => a.AccNo)
+                    .ToListAsync();
+
+                if (userAccNos == null || userAccNos.Count == 0)
+                    return NotFound(new { message = "No accounts found for this user." });
+
+                // Fetch only scheduled transactions linked to user's accounts
                 var list = await bankDbContext.ScheduledTransactions
+                    .Where(t => userAccNos.Contains(t.fromAcc) || userAccNos.Contains(t.toAcc))
                     .OrderByDescending(t => t.CreatedAt)
+                    .Select(t => new
+                    {
+                        t.STId,
+                        t.fromAcc,
+                        t.toAcc,
+                        t.Amount,
+                        t.ScheduleTime,
+                        t.CreatedAt,
+                        t.TransacStatus
+                    })
                     .ToListAsync();
 
                 if (list.Count == 0)
-                    return NotFound(new { message = "No scheduled transactions found." });
+                    return NotFound(new { message = "No scheduled transactions found for your accounts." });
 
                 return Ok(list);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Error fetching scheduled transactions", error = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
+
 
         [HttpPatch("CancelScheduledTransaction/{id}")]
         public async Task<IActionResult> CancelScheduledTransaction(int id, [FromBody] CancelTransactionDto dto)
@@ -438,7 +457,7 @@ namespace Bank.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Error cancelling transaction", error = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
         //////// Transactions section ends ////////

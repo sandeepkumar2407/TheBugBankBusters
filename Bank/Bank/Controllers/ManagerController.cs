@@ -23,19 +23,42 @@ namespace Bank.Controllers
             this.passwordService = _passwordService;
         }
 
-        ////// CUSTOMER PART ///////
-        //private static string GenerateRandomPassword(int length)
-        //{
-        //    const string validChars = "ABCDEFGHJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$&";
-        //    Random random = new Random();
-        //    return new string(Enumerable.Repeat(validChars, length)
-        //                                .Select(s => s[random.Next(s.Length)])
-        //                                .ToArray());
-        //}
-        //private bool VerifyPassword(string? inputPassword, string hashedPassword)
-        //{
-        //    return inputPassword == hashedPassword;
-        //}
+
+        [HttpGet("GetProfile")]
+        public async Task<IActionResult> GetProfile()
+        {
+            try
+            {
+                var staffId = GetUserId();
+                if (staffId == null)
+                    return BadRequest(new { message = "Invalid staff ID" });
+
+                var staff = await bankDbContext.Staff
+                    .Include(s => s.Branch)
+                    .Where(s => s.EmpId == staffId)
+                    .Select(s => new StaffProfileDto
+                    {
+                        EmpId = s.EmpId,
+                        EmpName = s.EmpName,
+                        EmpRole = s.EmpRole,
+                        EmpMobile = s.EmpMobile,
+                        EmpEmail = s.EmpEmail,
+                        BranchId = s.BranchId,
+                        BranchName = s.Branch != null ? s.Branch.BranchName : string.Empty,
+                        BranchAddress = s.Branch != null ? s.Branch.Baddress : string.Empty
+                    })
+                    .FirstOrDefaultAsync();
+
+                if (staff == null)
+                    return NotFound(new { message = $"Staff with ID {staffId} not found" });
+
+                return Ok(staff);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
 
         [HttpPatch("UpdateLoginPassword")]
         public async Task<IActionResult> UpdateLoginPassword([FromBody] UpdatePassDto passDto)
@@ -575,33 +598,6 @@ namespace Bank.Controllers
             }
         }
 
-        //[HttpDelete("Transactions/{id}")]
-        //public IActionResult DeleteTransaction(long id)
-        //{
-        //    try
-        //    {
-        //        var transaction = bankDbContext.Transactions.Find(id);
-
-        //        if (transaction == null)
-        //        {
-        //            return NotFound($"Transaction {id} not found");
-        //        }
-
-        //        if (!transaction.TransacStatus.Equals("Failed", StringComparison.OrdinalIgnoreCase))
-        //        {
-        //            return BadRequest("Only failed transactions can be deleted");
-        //        }
-
-        //        bankDbContext.Transactions.Remove(transaction);
-        //        bankDbContext.SaveChanges();
-
-        //        return Ok("Failed transaction deleted successfully");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return BadRequest(ex.Message);
-        //    }
-        //}
 
         //////////ACCOUNTS PART//////
 
@@ -659,28 +655,31 @@ namespace Bank.Controllers
             try
             {
                 var branchId = GetBranchId();
+                if (branchId == null)
+                    return BadRequest(new { message = "Invalid branch ID" });
 
-                var ifsc = await bankDbContext.Branches
-                    .Where(b => b.BranchId == branchId)
-                    .Select(b => b.IfscCode)
-                    .FirstOrDefaultAsync();
+                var accounts = await (from a in bankDbContext.Accounts
+                                      join u in bankDbContext.Users on a.UserId equals u.UserId
+                                      join b in bankDbContext.Branches on a.IfscCode equals b.IfscCode
+                                      where b.BranchId == branchId && u.SoftDelete == true
+                                      select new AccountResponseDto
+                                      {
+                                          AccNo = a.AccNo,
+                                          AccType = a.AccType,
+                                          Balance = a.Balance,
+                                          DateOfJoining = a.DateOfJoining,
+                                          IfscCode = a.IfscCode,
+                                          AccountStatus = a.AccountStatus,
 
-                if (ifsc == null)
-                    return NotFound(new { message = "Branch not found for the manager" });
+                                          UserId = u.UserId,
+                                          UserName = u.Uname,
+                                          Email = u.Email,
+                                          Mobile = u.Mobile,
 
-                var accounts = await bankDbContext.Accounts
-                    .Where(a => a.IfscCode == ifsc)
-                    .Select(a => new AccountFetchDto
-                    {
-                        AccNo = a.AccNo,
-                        UserId = a.UserId,
-                        AccType = a.AccType,
-                        Balance = a.Balance,
-                        DateOfJoining = a.DateOfJoining,
-                        IfscCode = a.IfscCode,
-                        AccountStatus = a.AccountStatus
-                    })
-                    .ToListAsync();
+                                          BranchId = b.BranchId,
+                                          BranchName = b.BranchName,
+                                          BranchAddress = b.Baddress
+                                      }).ToListAsync();
 
                 if (accounts == null || accounts.Count == 0)
                     return NotFound(new { message = "No accounts found for this branch" });
@@ -688,15 +687,14 @@ namespace Bank.Controllers
                 return Ok(new
                 {
                     message = "Accounts fetched successfully",
-                    accounts = accounts
+                    accounts
                 });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = "Error getting accounts", error = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
-
 
         [HttpPost("CreateAccount")]
         public async Task<IActionResult> CreateAccount([FromBody] AccountDto accountDto)
