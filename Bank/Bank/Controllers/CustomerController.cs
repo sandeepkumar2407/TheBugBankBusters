@@ -123,7 +123,7 @@ namespace Bank.Controllers
                 if (isNewPass)
                     return BadRequest(new { message = "New password cannot be the same as the old password" });
 
-                user.LoginPassword = passwordService.HashPassword(passDto.newPassword);
+                user.TransactionPassword = passwordService.HashPassword(passDto.newPassword);
                 await bankDbContext.SaveChangesAsync();
                 return Ok(new { message = "Password updated successfully" });
             }
@@ -332,8 +332,20 @@ namespace Bank.Controllers
                 if (dto.Amount <= 0)
                     return BadRequest(new { message = "Amount must be greater than 0." });
 
-                var now = DateTime.Now;
-                if (dto.ScheduledTime < now || dto.ScheduledTime > now.AddHours(24))
+                // Convert incoming time to local (IST) explicitly
+                var scheduledTimeUtc = dto.ScheduledTime.Kind == DateTimeKind.Utc
+                    ? dto.ScheduledTime
+                    : DateTime.SpecifyKind(dto.ScheduledTime, DateTimeKind.Utc);
+
+                var scheduledTimeLocal = scheduledTimeUtc.ToLocalTime();
+
+                Console.WriteLine($"[DEBUG] dto.ScheduledTime={dto.ScheduledTime} (Kind={dto.ScheduledTime.Kind})");
+                Console.WriteLine($"[DEBUG] scheduledTimeLocal={scheduledTimeLocal}");
+                Console.WriteLine($"[DEBUG] Now (Local)={DateTime.Now}");
+                Console.WriteLine($"[DEBUG] Now (UTC)={DateTime.UtcNow}");
+
+                // Validate with local time (IST)
+                if (scheduledTimeLocal < DateTime.Now || scheduledTimeLocal > DateTime.Now.AddHours(24))
                     return BadRequest(new { message = "Scheduled time must be within 24 hours from now." });
 
                 var fromAccount = await bankDbContext.Accounts
@@ -354,12 +366,14 @@ namespace Bank.Controllers
                 if (!isTransPass)
                     return Unauthorized(new { message = "Invalid transaction password." });
 
+                // Save in UTC for consistency
                 var scheduled = new ScheduledTransaction
                 {
                     fromAcc = dto.FromAccountId,
                     toAcc = dto.ToAccountId,
                     Amount = dto.Amount,
-                    ScheduleTime = dto.ScheduledTime
+                    ScheduleTime = scheduledTimeUtc
+                    //ScheduleTime = dto.ScheduledTime.ToUniversalTime()
                 };
 
                 await bankDbContext.ScheduledTransactions.AddAsync(scheduled);
@@ -372,7 +386,6 @@ namespace Bank.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
-
 
         [HttpGet("ScheduledTransactions")]
         public async Task<IActionResult> GetScheduledTransactions()

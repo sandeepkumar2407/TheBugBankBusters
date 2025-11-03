@@ -29,10 +29,13 @@ namespace Bank
             });
 
             builder.Services.AddControllers();
-
+            //builder.Services.AddDbContext<BankDbContext>(options =>
+            //    options.UseSqlServer(builder.Configuration.GetConnectionString("myconn"))
+            //);
             builder.Services.AddDbContext<BankDbContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("myconn"))
-            );
+            {
+                options.UseSqlServer(builder.Configuration.GetConnectionString("ProdConnection"));
+            });
             builder.Services.AddScoped<IJwtServices, JwtService>();
             builder.Services.AddScoped<PasswordService>();
             builder.Services.AddDistributedMemoryCache();

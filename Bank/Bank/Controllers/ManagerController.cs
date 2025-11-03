@@ -29,7 +29,7 @@ namespace Bank.Controllers
         {
             try
             {
-                var staffId = GetUserId();
+                var staffId = GetEmpId();
                 if (staffId == null)
                     return BadRequest(new { message = "Invalid staff ID" });
 
@@ -776,6 +776,7 @@ namespace Bank.Controllers
                 {
                     return NotFound(new { message = "Account not found" });
                 }
+                account.Balance = 0;
                 account.AccountStatus = statusDto.AccountStatus;
                 await bankDbContext.SaveChangesAsync();
                 return Ok(new { message = "Account status updated successfully" });

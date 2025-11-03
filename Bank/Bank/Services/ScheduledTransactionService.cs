@@ -27,7 +27,7 @@ namespace Bank.Services
             var db = scope.ServiceProvider.GetRequiredService<BankDbContext>();
 
             var dueTransactions = await db.ScheduledTransactions
-                .Where(t => t.TransacStatus == "Pending" && t.ScheduleTime <= DateTime.Now)
+                .Where(t => t.TransacStatus == "Pending" && t.ScheduleTime <= DateTime.UtcNow)
                 .ToListAsync();
 
             foreach (var t in dueTransactions)
